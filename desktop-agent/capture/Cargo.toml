@@ -6,8 +6,30 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bytes = "1"
+jpeg-encoder = "0.6"
+openh264.workspace = true
 serde.workspace = true
+tokio.workspace = true
+tokio-util = { version = "0.7", features = ["rt"] }
 tracing.workspace = true
+webrtc.workspace = true
 
-[target.'cfg(target_os = "linux")'.dependencies]
-tracing.workspace = true
+[features]
+default = []
+scap-capture = ["scap"]
+hardware-encode = ["ffmpeg-next"]
+
+[dependencies.scap]
+version = "0.1.0-beta.1"
+optional = true
+
+[dependencies.ffmpeg-next]
+version = "7"
+optional = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }

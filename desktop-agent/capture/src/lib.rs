@@ -1,8 +1,46 @@
+mod capture_loop;
+mod encoder;
 mod linux;
 mod macos;
+mod minimize;
+mod rtp;
+mod scap_source;
+mod synthetic;
+mod thumbnail;
 mod windows;
 
 use serde::{Deserialize, Serialize};
+
+pub use capture_loop::{run_capture_loop, CaptureConfig};
+pub use encoder::{EncoderBackend, EncoderParams, H264Encoder};
+pub use rtp::{H264Packetizer, RtpPacket};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PixelFormat {
+    BGRA,
+    NV12,
+}
+
+#[derive(Debug, Clone)]
+pub struct Frame {
+    pub data: Vec<u8>,
+    pub format: PixelFormat,
+    pub width: u32,
+    pub height: u32,
+    pub timestamp_us: u64,
+}
+
+pub trait Capturable: Send {
+    fn id(&self) -> &str;
+    fn name(&self) -> &str;
+    fn width(&self) -> u32;
+    fn height(&self) -> u32;
+    fn start(&mut self) -> anyhow::Result<()>;
+    fn stop(&mut self);
+    fn next_frame(&mut self) -> anyhow::Result<Frame>;
+    fn capture_thumbnail(&mut self) -> anyhow::Result<Vec<u8>>;
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -45,7 +83,24 @@ pub fn capture_thumbnail(source_id: &str) -> anyhow::Result<Vec<u8>> {
     }
 }
 
-fn placeholder_thumbnail() -> Vec<u8> {
+pub fn create_capturable(
+    source_id: &str,
+    config: &CaptureConfig,
+) -> anyhow::Result<Box<dyn Capturable>> {
+    #[cfg(target_os = "linux")]
+    return linux::create_capturable(source_id, config);
+    #[cfg(target_os = "windows")]
+    return windows::create_capturable(source_id, config);
+    #[cfg(target_os = "macos")]
+    return macos::create_capturable(source_id, config);
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    {
+        let _ = (source_id, config);
+        anyhow::bail!("unsupported platform")
+    }
+}
+
+pub fn placeholder_thumbnail() -> Vec<u8> {
     const PLACEHOLDER: &[u8] = &[
         0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00,
         0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06,

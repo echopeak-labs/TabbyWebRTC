@@ -1,0 +1,245 @@
+use openh264::encoder::{Encoder, EncoderConfig, RateControlMode};
+use openh264::formats::{BgraSliceU8, YUVBuffer};
+use openh264::OpenH264API;
+use tracing::debug;
+
+use crate::{Frame, PixelFormat};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum H264Profile {
+    Baseline,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum H264Level {
+    Level4_1,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RateControl {
+    CBR,
+}
+
+#[derive(Debug, Clone)]
+pub struct EncoderParams {
+    pub width: u32,
+    pub height: u32,
+    pub fps: u32,
+    pub bitrate_kbps: u32,
+    pub keyframe_interval: u32,
+    pub profile: H264Profile,
+    pub level: H264Level,
+    pub rate_control: RateControl,
+}
+
+impl EncoderParams {
+    pub fn from_source(width: u32, height: u32, max_fps: u32) -> Self {
+        Self {
+            width,
+            height,
+            fps: max_fps,
+            bitrate_kbps: 8_000,
+            keyframe_interval: max_fps,
+            profile: H264Profile::Baseline,
+            level: H264Level::Level4_1,
+            rate_control: RateControl::CBR,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EncoderBackend {
+    Nvenc,
+    Vaapi,
+    VideoToolbox,
+    Software,
+}
+
+pub struct H264Encoder {
+    backend: EncoderBackend,
+    encoder: openh264::encoder::Encoder,
+    yuv_scratch: YUVBuffer,
+    frame_count: u64,
+    keyframe_interval: u32,
+}
+
+impl H264Encoder {
+    pub fn new(params: &EncoderParams, encoder_pref: &str) -> anyhow::Result<Self> {
+        let backend = select_backend(encoder_pref);
+        debug!(?backend, "selected H.264 encoder backend");
+        let encoder = build_software_encoder(params)?;
+        let yuv_scratch = YUVBuffer::new(params.width as usize, params.height as usize);
+        Ok(Self {
+            backend,
+            encoder,
+            yuv_scratch,
+            frame_count: 0,
+            keyframe_interval: params.keyframe_interval,
+        })
+    }
+
+    pub fn backend(&self) -> EncoderBackend {
+        self.backend
+    }
+
+    pub fn encode(&mut self, frame: &Frame) -> anyhow::Result<Vec<Vec<u8>>> {
+        self.prepare_yuv(frame)?;
+        if self.frame_count % self.keyframe_interval as u64 == 0 {
+            self.encoder.force_intra_frame();
+        }
+        let bitstream = self.encoder.encode(&self.yuv_scratch)?;
+        self.frame_count += 1;
+        let mut nals = Vec::new();
+        for i in 0..bitstream.num_layers() {
+            let Some(layer) = bitstream.layer(i) else {
+                continue;
+            };
+            for j in 0..layer.nal_count() {
+                let Some(nal) = layer.nal_unit(j) else {
+                    continue;
+                };
+                let mut annex_b = Vec::with_capacity(nal.len() + 4);
+                annex_b.extend_from_slice(&[0, 0, 0, 1]);
+                annex_b.extend_from_slice(nal);
+                nals.push(annex_b);
+            }
+        }
+        Ok(nals)
+    }
+}
+
+fn select_backend(encoder_pref: &str) -> EncoderBackend {
+    let candidates = match encoder_pref {
+        "nvenc" => vec![EncoderBackend::Nvenc, EncoderBackend::Software],
+        "vaapi" => vec![EncoderBackend::Vaapi, EncoderBackend::Software],
+        "videotoolbox" => vec![EncoderBackend::VideoToolbox, EncoderBackend::Software],
+        "software" => vec![EncoderBackend::Software],
+        _ => vec![
+            EncoderBackend::Nvenc,
+            EncoderBackend::Vaapi,
+            EncoderBackend::VideoToolbox,
+            EncoderBackend::Software,
+        ],
+    };
+
+    for backend in candidates {
+        if try_init_hardware(backend).is_ok() {
+            return backend;
+        }
+    }
+    EncoderBackend::Software
+}
+
+fn try_init_hardware(backend: EncoderBackend) -> anyhow::Result<()> {
+    #[cfg(feature = "hardware-encode")]
+    {
+        match backend {
+            EncoderBackend::Nvenc => try_ffmpeg_codec("h264_nvenc")?,
+            EncoderBackend::Vaapi => try_ffmpeg_codec("h264_vaapi")?,
+            EncoderBackend::VideoToolbox => try_ffmpeg_codec("h264_videotoolbox")?,
+            EncoderBackend::Software => return Ok(()),
+        }
+        return Ok(());
+    }
+    #[cfg(not(feature = "hardware-encode"))]
+    {
+        let _ = backend;
+        anyhow::bail!("hardware encode feature disabled")
+    }
+}
+
+#[cfg(feature = "hardware-encode")]
+fn try_ffmpeg_codec(_name: &str) -> anyhow::Result<()> {
+    anyhow::bail!("ffmpeg hardware encoder probe not implemented")
+}
+
+fn build_software_encoder(params: &EncoderParams) -> anyhow::Result<Encoder> {
+    let bitrate_bps = params.bitrate_kbps * 1000;
+    let config = EncoderConfig::new()
+        .set_bitrate_bps(bitrate_bps)
+        .max_frame_rate(params.fps as f32)
+        .rate_control_mode(RateControlMode::Bitrate);
+    let _ = (params.profile, params.level, params.rate_control);
+    Encoder::with_api_config(OpenH264API::from_source(), config)
+        .map_err(|e| anyhow::anyhow!("openh264 init failed: {e}"))
+}
+
+impl H264Encoder {
+    fn prepare_yuv(&mut self, frame: &Frame) -> anyhow::Result<()> {
+        match frame.format {
+            PixelFormat::BGRA => {
+                let bgra = BgraSliceU8::new(
+                    &frame.data,
+                    (frame.width as usize, frame.height as usize),
+                );
+                self.yuv_scratch.read_rgb(bgra);
+            }
+            PixelFormat::NV12 => {
+                let bgra = nv12_to_bgra(&frame.data, frame.width, frame.height)?;
+                let slice = BgraSliceU8::new(&bgra, (frame.width as usize, frame.height as usize));
+                self.yuv_scratch.read_rgb(slice);
+            }
+        }
+        Ok(())
+    }
+}
+
+fn nv12_to_bgra(nv12: &[u8], width: u32, height: u32) -> anyhow::Result<Vec<u8>> {
+    let w = width as usize;
+    let h = height as usize;
+    let y_plane = w * h;
+    if nv12.len() < y_plane + w * h / 2 {
+        anyhow::bail!("NV12 buffer too small");
+    }
+    let mut bgra = vec![0u8; w * h * 4];
+    for y in 0..h {
+        for x in 0..w {
+            let y_idx = y * w + x;
+            let uv_idx = y_plane + (y / 2) * w + (x & !1);
+            let y_val = nv12[y_idx] as i32;
+            let u_val = nv12[uv_idx] as i32 - 128;
+            let v_val = nv12[uv_idx + 1] as i32 - 128;
+            let r = (y_val + ((1436 * v_val) >> 10)).clamp(0, 255) as u8;
+            let g = (y_val - ((352 * u_val + 731 * v_val) >> 10)).clamp(0, 255) as u8;
+            let b = (y_val + ((1814 * u_val) >> 10)).clamp(0, 255) as u8;
+            let out = (y * w + x) * 4;
+            bgra[out] = b;
+            bgra[out + 1] = g;
+            bgra[out + 2] = r;
+            bgra[out + 3] = 255;
+        }
+    }
+    Ok(bgra)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encodes_solid_bgra_frame() {
+        let width = 64u32;
+        let height = 64u32;
+        let mut data = vec![0u8; (width * height * 4) as usize];
+        for px in data.chunks_exact_mut(4) {
+            px[0] = 40;
+            px[1] = 120;
+            px[2] = 200;
+            px[3] = 255;
+        }
+        let frame = Frame {
+            data,
+            format: PixelFormat::BGRA,
+            width,
+            height,
+            timestamp_us: 0,
+        };
+        let params = EncoderParams::from_source(width, height, 30);
+        let mut encoder = H264Encoder::new(&params, "software").unwrap();
+        let nals = encoder.encode(&frame).unwrap();
+        assert!(!nals.is_empty());
+        assert!(nals[0].starts_with(&[0, 0, 0, 1]));
+        let total_bytes: usize = nals.iter().map(|n| n.len()).sum();
+        assert!(total_bytes > 20);
+    }
+}

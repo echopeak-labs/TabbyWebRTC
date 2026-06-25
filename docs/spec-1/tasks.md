@@ -222,18 +222,18 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## desktop-agent/02-display-capture.md
 
-- [ ] Define `Capturable` trait and `Frame` / `PixelFormat` types in `capture/src/lib.rs`
-- [ ] Implement Linux capture in `capture/src/linux.rs` using `ashpd` + PipeWire portal
-- [ ] Implement Windows capture in `capture/src/windows.rs` using DXGI Desktop Duplication API
-- [ ] Implement Windows per-window capture using `Windows.Graphics.Capture` API
-- [ ] Implement macOS capture in `capture/src/macos.rs` using ScreenCaptureKit bindings
-- [ ] Implement hardware encoder selection logic: NVENC → VAAPI → VideoToolbox → software fallback
-- [ ] Implement `CaptureLoop` async task: `spawn_blocking` for `next_frame()`, encode, write RTP sample
-- [ ] Implement H.264 NAL unit → RTP packetization (FU-A for large NALUs)
-- [ ] Implement `capture_thumbnail()`: single frame → scale to 320×180 → encode JPEG quality 60
-- [ ] Implement window minimization override (per platform): intercept minimize, move off-screen instead
-- [ ] Implement window position restore on unsubscribe
-- [ ] Test capture loop on Linux with a real display; verify H.264 output is decodable
+- [x] Define `Capturable` trait and `Frame` / `PixelFormat` types in `capture/src/lib.rs`
+- [x] Implement Linux capture in `capture/src/linux.rs` using `ashpd` + PipeWire portal
+- [x] Implement Windows capture in `capture/src/windows.rs` using DXGI Desktop Duplication API
+- [x] Implement Windows per-window capture using `Windows.Graphics.Capture` API
+- [x] Implement macOS capture in `capture/src/macos.rs` using ScreenCaptureKit bindings
+- [x] Implement hardware encoder selection logic: NVENC → VAAPI → VideoToolbox → software fallback
+- [x] Implement `CaptureLoop` async task: `spawn_blocking` for `next_frame()`, encode, write RTP sample
+- [x] Implement H.264 NAL unit → RTP packetization (FU-A for large NALUs)
+- [x] Implement `capture_thumbnail()`: single frame → scale to 320×180 → encode JPEG quality 60
+- [x] Implement window minimization override (per platform): intercept minimize, move off-screen instead
+- [x] Implement window position restore on unsubscribe
+- [x] Test capture loop on Linux with a real display; verify H.264 output is decodable
 
 ---
 

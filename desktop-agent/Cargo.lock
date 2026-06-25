@@ -475,8 +475,17 @@ name = "capture"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
+ "ffmpeg-next",
+ "jpeg-encoder",
+ "openh264",
+ "scap",
  "serde",
+ "tokio",
+ "tokio-util",
  "tracing",
+ "webrtc",
+ "windows 0.58.0",
 ]
 
 [[package]]
@@ -1764,6 +1773,12 @@ dependencies = [
  "getrandom 0.3.4",
  "libc",
 ]
+
+[[package]]
+name = "jpeg-encoder"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b454d911ac55068f53495488d8ccd0646eaa540c033a28ee15b07838afafb01f"
 
 [[package]]
 name = "js-sys"
@@ -3461,6 +3476,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]
