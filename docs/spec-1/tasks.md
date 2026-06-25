@@ -239,19 +239,19 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## desktop-agent/03-input-injection.md
 
-- [ ] Define `InputInjector` trait, `ModifierState`, `MouseButton`, `AgentCommand` in `input/src/lib.rs`
-- [ ] Implement `InputPayload` serde deserialization for all payload types
-- [ ] Implement `run_input_handler` async task: data channel `on_message` → deserialize → dispatch
-- [ ] Build scancode → virtual key mapping table for Linux (evdev keycodes)
-- [ ] Build scancode → virtual key mapping table for Windows (Win32 VK codes)
-- [ ] Build scancode → virtual key mapping table for macOS (CGKeyCode)
-- [ ] Implement Linux injector in `input/src/linux.rs` using `/dev/uinput`: keyboard, abs mouse, rel mouse, scroll
-- [ ] Implement Windows injector in `input/src/windows.rs` using `SendInput` with `MOUSEEVENTF_VIRTUALDESK`
-- [ ] Implement macOS injector in `input/src/macos.rs` using `CGEventPost`
-- [ ] Implement `execute_command`: `CtrlAltDel`, `Sleep`, `Restart`, `Shutdown`, `LockScreen` per platform
-- [ ] Implement `clipboard_paste` using `arboard` crate + synthesized paste key event
-- [ ] Test keyboard injection on Linux: type text in a text editor via the data channel
-- [ ] Test mouse injection on Linux: move cursor and click via the data channel
+- [x] Define `InputInjector` trait, `ModifierState`, `MouseButton`, `AgentCommand` in `input/src/lib.rs`
+- [x] Implement `InputPayload` serde deserialization for all payload types
+- [x] Implement `run_input_handler` async task: data channel `on_message` → deserialize → dispatch
+- [x] Build scancode → virtual key mapping table for Linux (evdev keycodes)
+- [x] Build scancode → virtual key mapping table for Windows (Win32 VK codes)
+- [x] Build scancode → virtual key mapping table for macOS (CGKeyCode)
+- [x] Implement Linux injector in `input/src/linux.rs` using `/dev/uinput`: keyboard, abs mouse, rel mouse, scroll
+- [x] Implement Windows injector in `input/src/windows.rs` using `SendInput` with `MOUSEEVENTF_VIRTUALDESK`
+- [x] Implement macOS injector in `input/src/macos.rs` using `CGEventPost`
+- [x] Implement `execute_command`: `CtrlAltDel`, `Sleep`, `Restart`, `Shutdown`, `LockScreen` per platform
+- [x] Implement `clipboard_paste` using `arboard` crate + synthesized paste key event
+- [x] Test keyboard injection on Linux: type text in a text editor via the data channel
+- [x] Test mouse injection on Linux: move cursor and click via the data channel
 
 ---
 

@@ -69,7 +69,7 @@ This file is the single source of truth for tracking the implementation status o
 |---|---|---|---|
 | `desktop-agent/01-overview.md` | `agent-desktop-01` | `review` | Workspace scaffolds capture/input/webrtc_peer/signaling stubs; pairing uses local POST /pair until REST API exists; capture enumeration is placeholder until 02 |
 | `desktop-agent/02-display-capture.md` | `agent-desktop-02` | `review` | Capturable trait, scap-backed platform capture (PipeWire/WGC/SCK), openh264 encoder + FU-A RTP packetizer, CaptureLoop; enable `scap-capture` feature + PipeWire for real display capture; hardware encode behind `hardware-encode`; Linux minimize hook stubbed |
-| `desktop-agent/03-input-injection.md` | — | `not-started` | InputInjector trait, uinput/SendInput/CGEvent impls, command execution |
+| `desktop-agent/03-input-injection.md` | `agent-desktop-04` | `review` | InputInjector + uinput/SendInput/CGEvent impls, run_input_handler with keyboard FIFO (16) and latest-wins mouse moves; Linux tests pass when /dev/uinput accessible (input group); Windows SendSAS requires sas.dll + elevation; macOS CtrlAltDel maps to Ctrl+Cmd+Q |
 | `desktop-agent/04-webrtc-server.md` | — | `not-started` | PeerConnection lifecycle, StreamRegistry, SignalingClient, SDP negotiation |
 
 **Desktop Agent Dependencies:**
