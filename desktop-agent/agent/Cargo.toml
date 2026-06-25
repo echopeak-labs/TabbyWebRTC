@@ -1,0 +1,59 @@
+[package]
+name = "tabbyrdp-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "tabbyrdp-agent"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+base64.workspace = true
+capture = { path = "../capture" }
+clap.workspace = true
+ed25519-dalek.workspace = true
+futures-util.workspace = true
+hmac.workspace = true
+input = { path = "../input" }
+jsonwebtoken.workspace = true
+keyring.workspace = true
+mdns-sd.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+signaling = { path = "../signaling" }
+tokio.workspace = true
+toml.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+webrtc_peer = { path = "../webrtc_peer" }
+
+[dependencies.openh264]
+workspace = true
+optional = true
+
+[dependencies.ffmpeg-next]
+version = "7"
+optional = true
+
+[dependencies.scap]
+version = "0.1.0-beta.1"
+optional = true
+
+[dependencies.webrtc]
+workspace = true
+
+[dependencies.enigo]
+workspace = true
+
+[features]
+default = []
+hardware-encode = ["ffmpeg-next"]
+scap-capture = ["scap"]
+software-encode = ["openh264"]

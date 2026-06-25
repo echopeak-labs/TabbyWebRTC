@@ -120,12 +120,12 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## backend/01-architecture.md
 
-- [ ] Initialize CDK TypeScript project in `infra/` with `cdk init app --language typescript`
-- [ ] Create `lib/constructs/dynamodb-tables.ts`: define all 4 DynamoDB tables with correct keys, GSIs, TTL, and PAY_PER_REQUEST
-- [ ] Create `lib/constructs/iam-roles.ts`: Lambda execution role with table grants
-- [ ] Tag all CDK resources with `{ project: 'tabbyrdp' }` via `Tags.of(this).add(...)`
-- [ ] Verify `cdk synth` completes without errors
-- [ ] Configure `cdk.json` with `env=dev` / `env=prod` context switching
+- [x] Initialize CDK TypeScript project in `infra/` with `cdk init app --language typescript`
+- [x] Create `lib/constructs/dynamodb-tables.ts`: define all 4 DynamoDB tables with correct keys, GSIs, TTL, and PAY_PER_REQUEST
+- [x] Create `lib/constructs/iam-roles.ts`: Lambda execution role with table grants
+- [x] Tag all CDK resources with `{ project: 'tabbyrdp' }` via `Tags.of(this).add(...)`
+- [x] Verify `cdk synth` completes without errors
+- [x] Configure `cdk.json` with `env=dev` / `env=prod` context switching
 
 ---
 
@@ -207,16 +207,16 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## desktop-agent/01-overview.md
 
-- [ ] Initialize Cargo workspace in `desktop-agent/` with crates: `agent`, `capture`, `input`, `webrtc_peer`, `signaling`
-- [ ] Add all key dependencies to `Cargo.toml` files per spec (webrtc, tokio, engio, scap, ffmpeg-next, etc.)
-- [ ] Implement `config.rs`: TOML deserialization, default values, config file path resolution per platform
-- [ ] Implement CLI arg parsing in `main.rs` using `clap`: `--config <path>`, `--log-level <level>`
-- [ ] Implement OS keychain read/write for agent JWT using `keyring` crate
-- [ ] Implement `SourceEnumerator` task: polls display/window list every 30 s, sends delta updates via channel
-- [ ] Implement startup sequence per spec (steps 1–10)
-- [ ] Implement first-run pairing flow: generate Ed25519 keypair, display pairing URL, await JWT
-- [ ] Implement `ThumbnailServer` HTTP server on port 7700 (axum or tiny_http)
-- [ ] Verify binary compiles cleanly on Linux with `cargo build`
+- [x] Initialize Cargo workspace in `desktop-agent/` with crates: `agent`, `capture`, `input`, `webrtc_peer`, `signaling`
+- [x] Add all key dependencies to `Cargo.toml` files per spec (webrtc, tokio, engio, scap, ffmpeg-next, etc.)
+- [x] Implement `config.rs`: TOML deserialization, default values, config file path resolution per platform
+- [x] Implement CLI arg parsing in `main.rs` using `clap`: `--config <path>`, `--log-level <level>`
+- [x] Implement OS keychain read/write for agent JWT using `keyring` crate
+- [x] Implement `SourceEnumerator` task: polls display/window list every 30 s, sends delta updates via channel
+- [x] Implement startup sequence per spec (steps 1–10)
+- [x] Implement first-run pairing flow: generate Ed25519 keypair, display pairing URL, await JWT
+- [x] Implement `ThumbnailServer` HTTP server on port 7700 (axum or tiny_http)
+- [x] Verify binary compiles cleanly on Linux with `cargo build`
 
 ---
 

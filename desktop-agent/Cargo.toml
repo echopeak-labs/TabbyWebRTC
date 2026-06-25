@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = ["agent", "capture", "input", "webrtc_peer", "signaling"]
+package.version = "0.1.0"
+package.edition = "2021"
+package.license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+axum = { version = "0.7", features = ["ws"] }
+base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+enigo = "0.2"
+futures-util = "0.3"
+hmac = "0.12"
+jsonwebtoken = "9"
+keyring = "3"
+mdns-sd = "0.11"
+openh264 = "0.6"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+toml = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+webrtc = "0.11"

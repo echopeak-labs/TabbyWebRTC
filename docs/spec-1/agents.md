@@ -38,7 +38,7 @@ This file is the single source of truth for tracking the implementation status o
 
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
-| `backend/01-architecture.md` | — | `not-started` | DynamoDB tables, IAM roles, CDK constructs skeleton |
+| `backend/01-architecture.md` | `agent-backend-01` | `review` | CDK scaffold in `infra/`; 4 DynamoDB tables + Lambda IAM role; `cdk synth` verified for dev/prod |
 | `backend/02-signaling-server.md` | — | `not-started` | Lambda router, connection lifecycle, SDP/ICE relay, subscription locks |
 | `backend/03-aws-infra.md` | — | `not-started` | Full CDK stack, REST API, env vars, stack outputs |
 | `backend/04-auth-service.md` | — | `not-started` | Clerk JWT validation, QR session flow, TabbyRDP JWT issuance, pairing |
@@ -67,7 +67,7 @@ This file is the single source of truth for tracking the implementation status o
 
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
-| `desktop-agent/01-overview.md` | — | `not-started` | Cargo workspace, config loading, startup sequence, pairing flow |
+| `desktop-agent/01-overview.md` | `agent-desktop-01` | `review` | Workspace scaffolds capture/input/webrtc_peer/signaling stubs; pairing uses local POST /pair until REST API exists; capture enumeration is placeholder until 02 |
 | `desktop-agent/02-display-capture.md` | — | `not-started` | Capturable trait, platform impls, H.264 encoder, CaptureLoop task |
 | `desktop-agent/03-input-injection.md` | — | `not-started` | InputInjector trait, uinput/SendInput/CGEvent impls, command execution |
 | `desktop-agent/04-webrtc-server.md` | — | `not-started` | PeerConnection lifecycle, StreamRegistry, SignalingClient, SDP negotiation |
@@ -135,3 +135,146 @@ Human reviews change `review` → `done`.
 | 3 | Linux capture: confirm PipeWire portal works headless (no DE) | `desktop-agent/02` | Before Linux capture impl |
 | 4 | Windows agent signing cert for `SendInput` with UAC-elevated apps | `desktop-agent/03` | Before Windows input impl |
 | 5 | `scap` crate maturity evaluation — may need to use raw OS APIs directly | `desktop-agent/02` | Before capture impl |
+
+---
+
+## Multi-Agent Playbook (Cursor)
+
+`agents.md` is the lock table. `tasks.md` is the checklist inside each spec. Cursor does not coordinate agents automatically — you do, by claiming ownership, partitioning folders, and merging by wave.
+
+### Core rule
+
+**One spec → one agent → one branch → one folder scope**
+
+If two agents touch the same spec, the same shared file, or the same branch, they will conflict.
+
+### Parallel waves
+
+Only start specs in the same wave when all dependencies from prior waves are `done` or `review`.
+
+| Wave | Run in parallel | Each agent owns |
+|---|---|---|
+| 1 | `backend/01` + `desktop-agent/01` | `infra/lib/constructs/` vs `desktop-agent/agent/` |
+| 2 | `backend/02` + `desktop-agent/02` + `desktop-agent/03` | `infra/lambda/` vs `desktop-agent/capture/` vs `desktop-agent/input/` |
+| 3 | `backend/03` + `backend/04` + `desktop-agent/04` + `frontend/01` | `infra/` vs `desktop-agent/webrtc_peer/` vs `frontend/` scaffold |
+| 4 | `frontend/02` then `frontend/03` | Sequential — both edit `signal-client.ts` |
+| 5 | `frontend/04` then `frontend/05` | `04` depends on `useWebRTC` from `03` |
+| 6 | `cicd/01` + `cicd/02` | `.github/workflows/` vs `scripts/` |
+
+Within a wave, do not start a spec whose dependencies are still `not-started` or `in-progress`.
+
+### Specs that must not run in parallel
+
+| Pair | Reason |
+|---|---|
+| `frontend/02` + `frontend/03` | Both edit `frontend/src/lib/signal-client.ts` |
+| `frontend/03` + `frontend/04` | `04` needs data channel from `03` |
+| `backend/02` + `backend/03` | `03` assembles CDK constructs from `02` |
+| `desktop-agent/04` + any other agent spec | `04` integrates capture, input, and signaling |
+
+### Folder ownership (hard boundaries)
+
+| Spec | Allowed write paths |
+|---|---|
+| `frontend/01` | `frontend/src/app/`, `frontend/src/stores/`, `frontend/src/types/`, `frontend/package.json`, `frontend/vite.config.ts` |
+| `frontend/02` | `frontend/src/pages/desktop/`, `frontend/src/pages/mobile/`, `frontend/src/lib/auth-sync.ts`, `frontend/src/lib/signal-client.ts`, `frontend/src/lib/clerk-client.ts` |
+| `frontend/03` | `frontend/src/lib/webrtc.ts`, `frontend/src/hooks/useWebRTC.ts`, `frontend/src/components/stream/` |
+| `frontend/04` | `frontend/src/hooks/useInputChannel.ts`, `frontend/src/lib/input-codec.ts`, `frontend/src/components/stream/ControlBar.tsx` |
+| `frontend/05` | `frontend/src/pages/desktop/LaunchpadPage.tsx`, `frontend/src/pages/desktop/StreamPage.tsx`, `frontend/src/components/launchpad/`, `frontend/src/components/layout/` |
+| `backend/01` | `infra/lib/constructs/dynamodb-tables.ts`, `infra/lib/constructs/iam-roles.ts` |
+| `backend/02` | `infra/lambda/src/` (except handlers wired only in `03`) |
+| `backend/03` | `infra/lib/tabbyrdp-stack.ts`, `infra/lib/constructs/websocket-api.ts`, `infra/lib/constructs/lambda-functions.ts` |
+| `backend/04` | `infra/lambda/src/handlers/auth.ts`, `infra/lambda/src/handlers/turn.ts`, `infra/lambda/src/handlers/agent.ts` |
+| `desktop-agent/01` | `desktop-agent/agent/`, `desktop-agent/Cargo.toml` |
+| `desktop-agent/02` | `desktop-agent/capture/` |
+| `desktop-agent/03` | `desktop-agent/input/` |
+| `desktop-agent/04` | `desktop-agent/webrtc_peer/`, `desktop-agent/signaling/` |
+| `cicd/01` | `.github/workflows/` |
+| `cicd/02` | `scripts/` |
+
+Agents must not edit paths outside their spec's allowed list unless explicitly merging integration work in wave order.
+
+### Daily workflow
+
+1. Open `agents.md` and find specs in the current wave with `not-started`.
+2. Assign a unique `Owner Agent` ID and set `Status` to `in-progress` before any code is written.
+3. Create one git branch per agent: `agent/<domain>-<spec>` (e.g. `agent/backend-01-architecture`).
+4. Open one Cursor chat per spec. Paste the prompt template below.
+5. Agent works only tasks under its `## <spec>` section in `tasks.md`.
+6. On completion: check off tasks in `tasks.md`, set `Status` to `review`, note blockers in `Notes`.
+7. Merge branches in wave order (1 → 2 → 3 → …). Human marks `review` → `done`.
+
+### Cursor prompt template
+
+Copy into every agent chat:
+
+```text
+You are <OWNER_AGENT_ID>.
+
+Read docs/spec-1/agents.md first.
+Only implement docs/spec-1/<SPEC_PATH>.
+Do not edit files outside the allowed paths for this spec in agents.md.
+Do not work on any other spec.
+
+Before coding:
+1. Set Owner Agent to <OWNER_AGENT_ID> and Status to in-progress in agents.md.
+2. Work only tasks under ## <SPEC_PATH> in docs/spec-1/tasks.md.
+
+Branch: agent/<branch-name>
+
+When done:
+1. Mark completed tasks [x] in tasks.md.
+2. Set Status to review in agents.md.
+3. List any blockers in the Notes column.
+```
+
+Example:
+
+```text
+You are agent-backend-01.
+
+Read docs/spec-1/agents.md first.
+Only implement docs/spec-1/backend/01-architecture.md.
+Do not edit frontend/, desktop-agent/, or other backend specs.
+Do not work on any other spec.
+
+Before coding:
+1. Set Owner Agent to agent-backend-01 and Status to in-progress in agents.md.
+2. Work only tasks under ## backend/01-architecture.md in docs/spec-1/tasks.md.
+
+Branch: agent/backend-01-architecture
+
+When done:
+1. Mark completed tasks [x] in tasks.md.
+2. Set Status to review in agents.md.
+3. List any blockers in the Notes column.
+```
+
+### Status lifecycle
+
+```
+not-started → in-progress (one owner only) → review → done
+                    ↓
+                 blocked (document dependency in Notes)
+```
+
+- `in-progress` = locked. No second agent may claim the same spec.
+- `review` = implementation complete. Do not rewrite unless fixing review feedback.
+- `blocked` = check Notes and dependency graph before reassigning.
+
+### First safe parallel run
+
+Start with wave 1 only:
+
+- **agent-backend-01** → `backend/01` on branch `agent/backend-01-architecture`
+- **agent-desktop-01** → `desktop-agent/01` on branch `agent/desktop-01-overview`
+
+Zero shared files. Merge both before starting wave 2.
+
+### What this file does not do
+
+- Does not prevent edits if the prompt omits boundaries.
+- Does not auto-merge git branches.
+- Does not detect file conflicts.
+
+You must enforce: claim in `agents.md` + branch per agent + folder boundaries in prompt + merge by wave.
