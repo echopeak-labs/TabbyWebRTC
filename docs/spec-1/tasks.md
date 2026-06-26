@@ -257,14 +257,14 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## desktop-agent/04-webrtc-server.md
 
-- [ ] Define `StreamRegistry` struct with `get_or_create_track`, `add_subscriber`, `remove_subscriber`
-- [ ] Implement `SignalingClient`: WebSocket connect with agent JWT, `send()`, auto-reconnect with exponential backoff
-- [ ] Implement all inbound signaling message handlers: `NOTIFY_SUBSCRIBER`, `SDP_ANSWER`, `ICE_CANDIDATE`, `NOTIFY_UNSUBSCRIBE`
-- [ ] Implement `handle_notify_subscriber`: create PeerConnection, add track from registry, create input data channel, generate SDP offer, send via signaling
-- [ ] Implement SDP H.264 Baseline profile constraint in `MediaEngine` codec registration
-- [ ] Implement ICE server config: STUN + TURN (credentials fetched at startup)
-- [ ] Implement ICE connection state monitoring with logging and cleanup on failure
-- [ ] Implement `PEER_CONNECTIONS` map (DashMap or `Arc<Mutex<HashMap>>`) keyed by `tabId`
-- [ ] Implement full teardown on `NOTIFY_UNSUBSCRIBE`: close PeerConnection, update StreamRegistry
-- [ ] Re-send `AGENT_REGISTER` on signaling WebSocket reconnect to restore server-side state
+- [x] Define `StreamRegistry` struct with `get_or_create_track`, `add_subscriber`, `remove_subscriber`
+- [x] Implement `SignalingClient`: WebSocket connect with agent JWT, `send()`, auto-reconnect with exponential backoff
+- [x] Implement all inbound signaling message handlers: `NOTIFY_SUBSCRIBER`, `SDP_ANSWER`, `ICE_CANDIDATE`, `NOTIFY_UNSUBSCRIBE`
+- [x] Implement `handle_notify_subscriber`: create PeerConnection, add track from registry, create input data channel, generate SDP offer, send via signaling
+- [x] Implement SDP H.264 Baseline profile constraint in `MediaEngine` codec registration
+- [ ] Implement ICE server config: STUN + TURN (credentials fetched at startup; STUN + TurnConfig plumbing done, fetch blocked on backend/04)
+- [x] Implement ICE connection state monitoring with logging and cleanup on failure
+- [x] Implement `PEER_CONNECTIONS` map (DashMap or `Arc<Mutex<HashMap>>`) keyed by `tabId`
+- [x] Implement full teardown on `NOTIFY_UNSUBSCRIBE`: close PeerConnection, update StreamRegistry
+- [x] Re-send `AGENT_REGISTER` on signaling WebSocket reconnect to restore server-side state
 - [ ] Integration test: connect a real browser tab to the agent, stream a display, verify video and input both work

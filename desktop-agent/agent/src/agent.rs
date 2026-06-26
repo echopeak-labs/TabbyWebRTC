@@ -2,8 +2,10 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
 use anyhow::Context;
-use signaling::{run_heartbeat_loop, SignalingClient};
+use capture::CaptureConfig;
+use signaling::{run_heartbeat_loop, AgentRegistration, SignalingClient};
 use tracing::info;
+use webrtc_peer::start_peer_stack;
 
 use crate::config::AgentConfig;
 use crate::keychain;
@@ -49,6 +51,32 @@ impl Agent {
         let signaling_public_key = public_key.clone();
         let local_endpoint = format!("http://{local_addr}");
         let local_endpoint_for_updates = local_endpoint.clone();
+        let shared_sources = server_state.sources.clone();
+
+        let registration = AgentRegistration {
+            agent_id: self.config.agent.id.clone(),
+            public_key: public_key.clone(),
+            platform: input::platform_name().to_string(),
+            sources: shared_sources.clone(),
+            local_endpoint: local_endpoint.clone(),
+        };
+
+        let capture_config = CaptureConfig {
+            encoder: self.config.capture.encoder.clone(),
+            max_fps: self.config.capture.max_fps,
+            hide_cursor: self.config.capture.hide_cursor,
+        };
+
+        let signaling = start_peer_stack(
+            &self.config.signaling.url,
+            &jwt,
+            registration,
+            capture_config,
+            None,
+        )
+        .await
+        .context("peer stack failed")?;
+        let _ = SIGNALING_CLIENT.set(signaling.clone());
 
         tokio::spawn(async move {
             let mut rx = source_updates.subscribe();
@@ -78,26 +106,6 @@ impl Agent {
                 }
             }
         });
-
-        let (_local_signal_tx, local_signal_rx) = tokio::sync::mpsc::channel(64);
-
-        let signaling = Arc::new(
-            SignalingClient::connect(&self.config.signaling.url, &jwt, local_signal_rx)
-                .await
-                .context("signaling connection failed")?,
-        );
-        let _ = SIGNALING_CLIENT.set(signaling.clone());
-
-        signaling
-            .send_agent_register(
-                &self.config.agent.id,
-                &public_key,
-                input::platform_name(),
-                &sources,
-                &local_endpoint,
-            )
-            .await
-            .context("AGENT_REGISTER failed")?;
 
         let heartbeat_client = signaling.clone();
         let agent_id = self.config.agent.id.clone();

@@ -37,6 +37,16 @@ pub enum OutboundMessage {
     AgentHeartbeat {
         agent_id: String,
     },
+    SdpOffer {
+        source_id: String,
+        sdp: String,
+        target_connection_id: String,
+    },
+    IceCandidate {
+        source_id: String,
+        candidate: serde_json::Value,
+        target_connection_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
