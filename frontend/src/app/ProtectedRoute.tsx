@@ -1,9 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom'
-
-const SESSION_TOKEN_KEY = 'tabbyrdp_token'
+import { readSession } from '@/lib/auth-sync'
 
 export function hasSessionToken(): boolean {
-  return sessionStorage.getItem(SESSION_TOKEN_KEY) !== null
+  return readSession() !== null
 }
 
 export function ProtectedRoute() {

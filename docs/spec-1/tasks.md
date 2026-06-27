@@ -33,51 +33,51 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ### Desktop tasks
 
-- [ ] Implement `src/lib/auth-sync.ts`: `initAuthSync()` with BroadcastChannel + 150 ms timeout
-- [ ] Implement permanent background listener in `auth-sync.ts` responding to `REQUEST_AUTH_TOKEN`
-- [ ] Integrate `initAuthSync()` into `DesktopRouter.tsx` before first route renders
-- [ ] Implement `signal-client.ts`: WebSocket client connecting to `VITE_WS_URL`
-- [ ] Handle inbound desktop WSS messages: `SESSION_PENDING`, `AUTH_APPROVED`, `SESSION_EXPIRED`, `ERROR`
-- [ ] Build `pages/desktop/ConnectPage.tsx`: centered card, Amber wordmark, QR panel
-- [ ] Integrate `qrcode.react` to render QR from `pendingSessionId`
-- [ ] Implement 28 s countdown SVG ring with automatic QR refresh (send `REFRESH_SESSION`)
-- [ ] Implement status text state machine: idle → waiting → authorized → loading
-- [ ] On `AUTH_APPROVED`: write token + agentId to `sessionStorage`, update `authStore`, navigate to `/launchpad`
-- [ ] Add "Connect on local network" secondary link with manual IP entry modal
+- [x] Implement `src/lib/auth-sync.ts`: `initAuthSync()` with BroadcastChannel + 150 ms timeout
+- [x] Implement permanent background listener in `auth-sync.ts` responding to `REQUEST_AUTH_TOKEN`
+- [x] Integrate `initAuthSync()` into `DesktopRouter.tsx` before first route renders
+- [x] Implement `signal-client.ts`: WebSocket client connecting to `VITE_WS_URL`
+- [x] Handle inbound desktop WSS messages: `SESSION_PENDING`, `AUTH_APPROVED`, `SESSION_EXPIRED`, `ERROR`
+- [x] Build `pages/desktop/ConnectPage.tsx`: centered card, Amber wordmark, QR panel
+- [x] Integrate `qrcode.react` to render QR from `pendingSessionId`
+- [x] Implement 28 s countdown SVG ring with automatic QR refresh (send `REFRESH_SESSION`)
+- [x] Implement status text state machine: idle → waiting → authorized → loading
+- [x] On `AUTH_APPROVED`: write token + agentId to `sessionStorage`, update `authStore`, navigate to `/launchpad`
+- [x] Add "Connect on local network" secondary link with manual IP entry modal
 
 ### Mobile tasks
 
-- [ ] Initialize Clerk in `MobileRouter.tsx` via `<ClerkProvider publishableKey={...}>`
-- [ ] Build `pages/mobile/MobileSignInPage.tsx`: render Clerk `<SignIn>` component with Onyx/Amber theme overrides
-- [ ] Implement Clerk session guard in `MobileRouter.tsx`: if no Clerk session, redirect to `/` (sign-in)
-- [ ] Build `pages/mobile/MobileAgentsPage.tsx`: list paired agents with online/offline status; bottom "Scan QR" CTA
-- [ ] Hydrate `mobileStore.pairedAgents` from Clerk user metadata on sign-in (`user.publicMetadata.pairedAgents`)
-- [ ] Build `pages/mobile/MobileScanPage.tsx`: camera feed via `getUserMedia`, QR decode with `@zxing/browser`
-- [ ] In `MobileScanPage`: detect `type: "PAIR"` vs normal session QR and route accordingly
-- [ ] On successful scan: store `QRPayload` in `mobileStore.pendingScanPayload`, navigate to `/approve`
-- [ ] Build `pages/mobile/MobileApprovePage.tsx`: show target agent card + "Approve with Face ID" primary button
-- [ ] Implement biometric confirm via `navigator.credentials.get` (WebAuthn) with Clerk JWT fallback
-- [ ] On confirm: generate 32-byte salt, encrypt with agent public key via `tweetnacl`, `POST /auth/approve`
-- [ ] On success: show "Desktop connected" confirmation screen, navigate to `/agents`
-- [ ] Implement "+ Pair a new machine" flow: navigate to `/scan?mode=pair`, handle `type: "PAIR"` QR
-- [ ] On pairing QR decode: `POST /agents/pair` with Clerk JWT, store result in `mobileStore.pairedAgents` + Clerk user metadata
-- [ ] All mobile tap targets must be minimum 44×44 px; primary actions anchored to bottom of screen
+- [x] Initialize Clerk in `MobileRouter.tsx` via `<ClerkProvider publishableKey={...}>`
+- [x] Build `pages/mobile/MobileSignInPage.tsx`: render Clerk `<SignIn>` component with Onyx/Amber theme overrides
+- [x] Implement Clerk session guard in `MobileRouter.tsx`: if no Clerk session, redirect to `/` (sign-in)
+- [x] Build `pages/mobile/MobileAgentsPage.tsx`: list paired agents with online/offline status; bottom "Scan QR" CTA
+- [x] Hydrate `mobileStore.pairedAgents` from Clerk user metadata on sign-in (`user.publicMetadata.pairedAgents`)
+- [x] Build `pages/mobile/MobileScanPage.tsx`: camera feed via `getUserMedia`, QR decode with `@zxing/browser`
+- [x] In `MobileScanPage`: detect `type: "PAIR"` vs normal session QR and route accordingly
+- [x] On successful scan: store `QRPayload` in `mobileStore.pendingScanPayload`, navigate to `/approve`
+- [x] Build `pages/mobile/MobileApprovePage.tsx`: show target agent card + "Approve with Face ID" primary button
+- [x] Implement biometric confirm via `navigator.credentials.get` (WebAuthn) with Clerk JWT fallback
+- [x] On confirm: generate 32-byte salt, encrypt with agent public key via `tweetnacl`, `POST /auth/approve`
+- [x] On success: show "Desktop connected" confirmation screen, navigate to `/agents`
+- [x] Implement "+ Pair a new machine" flow: navigate to `/scan?mode=pair`, handle `type: "PAIR"` QR
+- [x] On pairing QR decode: `POST /agents/pair` with Clerk JWT, store result in `mobileStore.pairedAgents` + Clerk user metadata
+- [x] All mobile tap targets must be minimum 44×44 px; primary actions anchored to bottom of screen
 
 ---
 
 ## frontend/03-webrtc-client.md
 
-- [ ] Implement `src/lib/webrtc.ts`: `createPeerConnection(config)` factory using `RTC_CONFIG` from spec
-- [ ] Implement TURN credential fetch: `GET /turn-credentials` with JWT, cache result per session
-- [ ] Implement outbound signaling message senders in `signal-client.ts`: `SUBSCRIBE`, `SDP_ANSWER`, `ICE_CANDIDATE`, `UNSUBSCRIBE`
-- [ ] Handle inbound signaling messages: `SDP_OFFER`, `ICE_CANDIDATE`, `SOURCE_IN_USE`, `STREAM_CLOSED`
-- [ ] Implement `useWebRTC` hook with full PeerConnection lifecycle per spec interface
-- [ ] Implement `applyBitrateCap(sender, maxKbps)` helper
-- [ ] Build `VideoPlayer.tsx` component: `<video>` with `autoPlay`, `playsInline`, `srcObject`, `object-fit: contain`
-- [ ] Implement source in-use locking: update `agentStore.displays[].inUse` on `SOURCE_IN_USE` / `STREAM_CLOSED`
-- [ ] Implement `useThumbnailPoller` hook: fetch on mount, 5-minute interval, update `agentStore`
-- [ ] Implement WebSocket auto-reconnect with 2 s retry loop (max 30 s then show "Agent offline")
-- [ ] Add ICE failure retry logic: up to 3× with exponential backoff, toast on failure
+- [x] Implement `src/lib/webrtc.ts`: `createPeerConnection(config)` factory using `RTC_CONFIG` from spec
+- [x] Implement TURN credential fetch: `GET /turn-credentials` with JWT, cache result per session
+- [x] Implement outbound signaling message senders in `signal-client.ts`: `SUBSCRIBE`, `SDP_ANSWER`, `ICE_CANDIDATE`, `UNSUBSCRIBE`
+- [x] Handle inbound signaling messages: `SDP_OFFER`, `ICE_CANDIDATE`, `SOURCE_IN_USE`, `STREAM_CLOSED`
+- [x] Implement `useWebRTC` hook with full PeerConnection lifecycle per spec interface
+- [x] Implement `applyBitrateCap(sender, maxKbps)` helper
+- [x] Build `VideoPlayer.tsx` component: `<video>` with `autoPlay`, `playsInline`, `srcObject`, `object-fit: contain`
+- [x] Implement source in-use locking: update `agentStore.displays[].inUse` on `SOURCE_IN_USE` / `STREAM_CLOSED`
+- [x] Implement `useThumbnailPoller` hook: fetch on mount, 5-minute interval, update `agentStore`
+- [x] Implement WebSocket auto-reconnect with 2 s retry loop (max 30 s then show "Agent offline")
+- [x] Add ICE failure retry logic: up to 3× with exponential backoff, toast on failure
 
 ---
 

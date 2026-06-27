@@ -8,6 +8,7 @@ interface MobileState {
   pendingScanPayload: QRPayload | null
   setClerkUserId: (id: string | null) => void
   setPairedAgents: (agents: PairedAgent[]) => void
+  addPairedAgent: (agent: PairedAgent) => void
   setPendingScanPayload: (payload: QRPayload) => void
   clearPendingScan: () => void
 }
@@ -18,6 +19,10 @@ export const useMobileStore = create<MobileState>((set) => ({
   pendingScanPayload: null,
   setClerkUserId: (clerkUserId) => set({ clerkUserId }),
   setPairedAgents: (pairedAgents) => set({ pairedAgents }),
+  addPairedAgent: (agent) =>
+    set((state) => ({
+      pairedAgents: [...state.pairedAgents.filter((a) => a.agentId !== agent.agentId), agent],
+    })),
   setPendingScanPayload: (pendingScanPayload) => set({ pendingScanPayload }),
   clearPendingScan: () => set({ pendingScanPayload: null }),
 }))
