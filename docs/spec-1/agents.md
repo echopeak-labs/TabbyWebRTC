@@ -20,7 +20,7 @@ This file is the single source of truth for tracking the implementation status o
 
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
-| `frontend/01-ui-overview.md` | — | `not-started` | Scaffold React app, Vite, Tailwind, shadcn, routing, Zustand stores |
+| `frontend/01-ui-overview.md` | `agent-frontend-overview` | `review` | Vite+React+TS scaffold in `frontend/`; Onyx/Amber Tailwind+shadcn; dual lazy routers; Zustand stores+types; build verified: DesktopRouter 0.88 KB gzip, MobileRouter 27.16 KB gzip |
 | `frontend/02-auth-session.md` | — | `not-started` | BroadcastChannel auth, ConnectPage, QR render, Clerk integration |
 | `frontend/03-webrtc-client.md` | — | `not-started` | PeerConnection factory, signaling handshake, useWebRTC hook |
 | `frontend/04-input-handling.md` | — | `not-started` | Keyboard/mouse capture, data channel, Keyboard Lock API |

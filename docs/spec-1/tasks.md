@@ -8,24 +8,24 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## frontend/01-ui-overview.md
 
-- [ ] Initialize Vite + React + TypeScript project in `frontend/`
-- [ ] Install dependencies: `tailwindcss`, `@shadcn/ui`, `framer-motion`, `react-router-dom`, `zustand`, `@clerk/clerk-react`
-- [ ] Configure TailwindCSS with Onyx & Amber color tokens in `tailwind.config.ts` and `globals.css`
-- [ ] Initialize shadcn/ui and override all CSS variables to match the Onyx/Amber theme
-- [ ] Scaffold folder structure as defined in spec: `components/desktop/`, `components/mobile/`, `hooks/`, `stores/`, `lib/`, `types/`, `pages/desktop/`, `pages/mobile/`
-- [ ] Implement `useDeviceType.ts` hook: check `pointer: coarse` media query + mobile user agent → return `'desktop-viewer' | 'mobile-key'`
-- [ ] Define `src/types/device.ts` with `DeviceRole` type
-- [ ] Define all TypeScript types in `src/types/`: `agent.ts`, `stream.ts`, `input.ts`, `auth.ts`
-- [ ] Implement `authStore.ts` (Zustand, desktop) with `token`, `agentId`, `setToken`, `clearSession`
-- [ ] Implement `agentStore.ts` (Zustand, desktop) with `displays`, `apps`, `setDisplays`, `setApps`
-- [ ] Implement `streamStore.ts` (Zustand, desktop) with `activeStreams`, `registerStream`, `releaseStream`
-- [ ] Implement `mobileStore.ts` (Zustand, mobile) with `clerkUserId`, `pairedAgents`, `pendingScanPayload`
-- [ ] Scaffold `DesktopRouter.tsx` with `/`, `/launchpad`, `/stream/:sourceId` routes + `<ProtectedRoute>`
-- [ ] Scaffold `MobileRouter.tsx` with `/`, `/scan`, `/approve`, `/agents` routes + Clerk auth guard
-- [ ] Implement `App.tsx`: call `useDeviceType()`, lazy-load `<DesktopRouter>` or `<MobileRouter>` accordingly
-- [ ] Configure Vite with `VITE_WS_URL`, `VITE_REST_URL`, `VITE_CLERK_PUBLISHABLE_KEY` env vars
-- [ ] Verify Vite produces two separate async chunks (desktop vs mobile) — confirm via `npm run build` output
-- [ ] Verify desktop bundle chunk < 300 KB gzipped; mobile chunk < 120 KB gzipped
+- [x] Initialize Vite + React + TypeScript project in `frontend/`
+- [x] Install dependencies: `tailwindcss`, `@shadcn/ui`, `framer-motion`, `react-router-dom`, `zustand`, `@clerk/clerk-react`
+- [x] Configure TailwindCSS with Onyx & Amber color tokens in `tailwind.config.ts` and `globals.css`
+- [x] Initialize shadcn/ui and override all CSS variables to match the Onyx/Amber theme
+- [x] Scaffold folder structure as defined in spec: `components/desktop/`, `components/mobile/`, `hooks/`, `stores/`, `lib/`, `types/`, `pages/desktop/`, `pages/mobile/`
+- [x] Implement `useDeviceType.ts` hook: check `pointer: coarse` media query + mobile user agent → return `'desktop-viewer' | 'mobile-key'`
+- [x] Define `src/types/device.ts` with `DeviceRole` type
+- [x] Define all TypeScript types in `src/types/`: `agent.ts`, `stream.ts`, `input.ts`, `auth.ts`
+- [x] Implement `authStore.ts` (Zustand, desktop) with `token`, `agentId`, `setToken`, `clearSession`
+- [x] Implement `agentStore.ts` (Zustand, desktop) with `displays`, `apps`, `setDisplays`, `setApps`
+- [x] Implement `streamStore.ts` (Zustand, desktop) with `activeStreams`, `registerStream`, `releaseStream`
+- [x] Implement `mobileStore.ts` (Zustand, mobile) with `clerkUserId`, `pairedAgents`, `pendingScanPayload`
+- [x] Scaffold `DesktopRouter.tsx` with `/`, `/launchpad`, `/stream/:sourceId` routes + `<ProtectedRoute>`
+- [x] Scaffold `MobileRouter.tsx` with `/`, `/scan`, `/approve`, `/agents` routes + Clerk auth guard
+- [x] Implement `App.tsx`: call `useDeviceType()`, lazy-load `<DesktopRouter>` or `<MobileRouter>` accordingly
+- [x] Configure Vite with `VITE_WS_URL`, `VITE_REST_URL`, `VITE_CLERK_PUBLISHABLE_KEY` env vars
+- [x] Verify Vite produces two separate async chunks (desktop vs mobile) — confirm via `npm run build` output
+- [x] Verify desktop bundle chunk < 300 KB gzipped; mobile chunk < 120 KB gzipped
 
 ---
 
