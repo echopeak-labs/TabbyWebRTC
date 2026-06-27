@@ -131,16 +131,16 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## backend/02-signaling-server.md
 
-- [ ] Create `lambda/src/connect.ts`: register `connectionId` + client type in DynamoDB
-- [ ] Create `lambda/src/disconnect.ts`: deregister connection, mark agent offline if applicable, notify subscribers
-- [ ] Create `lambda/src/router.ts`: parse `type` field and dispatch to sub-handlers
-- [ ] Create `lambda/src/handlers/agent.ts`: handle `AGENT_REGISTER` and `AGENT_HEARTBEAT`
-- [ ] Create `lambda/src/handlers/signal.ts`: handle `SUBSCRIBE`, `UNSUBSCRIBE`, `SDP_OFFER`, `SDP_ANSWER`, `ICE_CANDIDATE`
-- [ ] Implement `sendToConnection()` helper with `GoneException` stale-connection cleanup
-- [ ] Implement source locking: `SUBSCRIBE` checks `source_locks` table; returns `SOURCE_IN_USE` if claimed
-- [ ] Implement lock release on `UNSUBSCRIBE`: delete lock, broadcast `STREAM_CLOSED` to all subscribers
-- [ ] Write unit tests for router dispatch logic
-- [ ] Write integration test for full signaling round-trip (mock API GW)
+- [x] Create `lambda/src/connect.ts`: register `connectionId` + client type in DynamoDB
+- [x] Create `lambda/src/disconnect.ts`: deregister connection, mark agent offline if applicable, notify subscribers
+- [x] Create `lambda/src/router.ts`: parse `type` field and dispatch to sub-handlers
+- [x] Create `lambda/src/handlers/agent.ts`: handle `AGENT_REGISTER` and `AGENT_HEARTBEAT`
+- [x] Create `lambda/src/handlers/signal.ts`: handle `SUBSCRIBE`, `UNSUBSCRIBE`, `SDP_OFFER`, `SDP_ANSWER`, `ICE_CANDIDATE`
+- [x] Implement `sendToConnection()` helper with `GoneException` stale-connection cleanup
+- [x] Implement source locking: `SUBSCRIBE` checks `source_locks` table; returns `SOURCE_IN_USE` if claimed
+- [x] Implement lock release on `UNSUBSCRIBE`: delete lock, broadcast `STREAM_CLOSED` to all subscribers
+- [x] Write unit tests for router dispatch logic
+- [x] Write integration test for full signaling round-trip (mock API GW)
 
 ---
 
