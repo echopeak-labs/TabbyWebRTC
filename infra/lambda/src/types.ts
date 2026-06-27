@@ -13,6 +13,7 @@ export interface ConnectionRecord {
   agentId?: string | null;
   userId?: string | null;
   token?: string;
+  pendingSessionId?: string;
   connectedAt: number;
   TTL: number;
 }
@@ -20,6 +21,7 @@ export interface ConnectionRecord {
 export interface AgentRecord {
   agentId: string;
   userId?: string | null;
+  name?: string;
   connectionId: string;
   publicKey: string;
   platform: string;
@@ -89,4 +91,8 @@ export interface IceCandidateMessage {
   sourceId: string;
   candidate: unknown;
   targetConnectionId?: string;
+}
+
+export interface RefreshSessionMessage {
+  type: 'REFRESH_SESSION';
 }

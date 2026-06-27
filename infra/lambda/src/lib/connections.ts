@@ -1,4 +1,4 @@
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type { ConnectionRecord } from '../types.js';
 import { docClient } from './dynamodb.js';
 import { connectionsTable, CONNECTION_TTL_SECONDS } from './env.js';
@@ -32,6 +32,36 @@ export async function putConnection(
         connectedAt: now,
         TTL: Math.floor(now / 1000) + CONNECTION_TTL_SECONDS,
       },
+    }),
+  );
+}
+
+export async function updateConnection(
+  connectionId: string,
+  updates: Partial<Pick<ConnectionRecord, 'agentId' | 'userId' | 'token' | 'pendingSessionId'>>,
+): Promise<void> {
+  const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
+  if (entries.length === 0) {
+    return;
+  }
+
+  const expressionParts: string[] = [];
+  const expressionNames: Record<string, string> = {};
+  const expressionValues: Record<string, unknown> = {};
+
+  for (const [key, value] of entries) {
+    expressionParts.push(`#${key} = :${key}`);
+    expressionNames[`#${key}`] = key;
+    expressionValues[`:${key}`] = value;
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: connectionsTable(),
+      Key: { connectionId },
+      UpdateExpression: `SET ${expressionParts.join(', ')}`,
+      ExpressionAttributeNames: expressionNames,
+      ExpressionAttributeValues: expressionValues,
     }),
   );
 }

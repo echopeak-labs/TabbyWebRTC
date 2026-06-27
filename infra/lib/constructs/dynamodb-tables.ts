@@ -52,6 +52,7 @@ export class DynamoDbTables extends Construct {
       tableName: `tabbyrdp-agents-${suffix}`,
       partitionKey: { name: 'agentId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'TTL',
       removalPolicy: RemovalPolicy.DESTROY,
     });
     this.agentsTable.addGlobalSecondaryIndex({

@@ -5,7 +5,8 @@ import type {
 import { onConnect } from './connect.js';
 import { onDisconnect } from './disconnect.js';
 import { getConnection } from './lib/connections.js';
-import { handleAgentHeartbeat, handleAgentRegister } from './handlers/agent.js';
+import { handleAgentHeartbeat, handleAgentRegister } from './handlers/agent-ws.js';
+import { handleRefreshSession } from './handlers/auth.js';
 import {
   handleIceCandidate,
   handleSdpAnswer,
@@ -74,6 +75,13 @@ const MESSAGE_HANDLERS: Record<string, MessageHandler> = {
       throw new Error('CONNECTION_NOT_FOUND');
     }
     await handleIceCandidate(message as unknown as IceCandidateMessage, connection);
+  },
+  REFRESH_SESSION: async (_message, connectionId) => {
+    const connection = await getConnection(connectionId);
+    if (!connection) {
+      throw new Error('CONNECTION_NOT_FOUND');
+    }
+    await handleRefreshSession(connection);
   },
 };
 

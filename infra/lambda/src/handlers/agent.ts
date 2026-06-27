@@ -1,48 +1,122 @@
-import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
-import type {
-  AgentHeartbeatMessage,
-  AgentRegisterMessage,
-  ConnectionRecord,
-} from '../types.js';
-import { touchAgentHeartbeat, upsertAgentRegistration } from '../lib/agents.js';
-import { docClient } from '../lib/dynamodb.js';
-import { connectionsTable } from '../lib/env.js';
+import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import {
+  getAgent,
+  listAgentsByUserId,
+  pairAgent,
+} from '../lib/agents.js';
+import {
+  extractBearerToken,
+  issueAgentJwt,
+  verifyClerkJwt,
+  verifyTabbyRDPToken,
+} from '../lib/jwt.js';
 
-export const handler: APIGatewayProxyHandler = async () => ({
-  statusCode: 501,
-  body: JSON.stringify({ error: 'Not implemented' }),
-});
+function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
+  return {
+    statusCode,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+}
 
-export async function handleAgentRegister(
-  message: AgentRegisterMessage,
-  connection: ConnectionRecord,
-): Promise<void> {
-  await upsertAgentRegistration({
-    agentId: message.agentId,
-    userId: connection.userId,
-    connectionId: connection.connectionId,
-    publicKey: message.publicKey,
-    platform: message.platform,
-    displays: message.displays ?? [],
-    apps: message.apps ?? [],
-    localEndpoint: message.localEndpoint,
+async function handleListAgents(token: string): Promise<APIGatewayProxyResult> {
+  const payload = await verifyTabbyRDPToken(token);
+  const userId = payload.sub!;
+  const agents = await listAgentsByUserId(userId);
+
+  return jsonResponse(200, {
+    agents: agents.map((agent) => ({
+      id: agent.agentId,
+      name: agent.name ?? agent.agentId,
+      platform: agent.platform,
+      online: agent.online,
+      lastSeen: new Date(agent.lastSeen).toISOString(),
+    })),
+  });
+}
+
+async function handlePairAgent(
+  clerkToken: string,
+  body: {
+    agentId?: string;
+    publicKey?: string;
+    platform?: string;
+    name?: string;
+  },
+): Promise<APIGatewayProxyResult> {
+  const { userId } = await verifyClerkJwt(clerkToken);
+
+  if (!body.agentId || !body.publicKey || !body.platform || !body.name) {
+    return jsonResponse(400, {
+      error: 'agentId, publicKey, platform, and name are required',
+    });
+  }
+
+  const existing = await getAgent(body.agentId);
+  if (existing && existing.userId !== userId) {
+    return jsonResponse(403, { error: 'Agent already paired to another user' });
+  }
+
+  await pairAgent({
+    agentId: body.agentId,
+    userId,
+    publicKey: body.publicKey,
+    platform: body.platform,
+    name: body.name,
   });
 
-  await docClient.send(
-    new PutCommand({
-      TableName: connectionsTable(),
-      Item: {
-        ...connection,
-        agentId: message.agentId,
-      },
-    }),
-  );
+  const agentJwt = await issueAgentJwt(body.agentId, userId);
+  return jsonResponse(200, { agentJwt });
 }
 
-export async function handleAgentHeartbeat(
-  message: AgentHeartbeatMessage,
-  connection: ConnectionRecord,
-): Promise<void> {
-  await touchAgentHeartbeat(message.agentId, connection.connectionId);
-}
+export const handler: APIGatewayProxyHandler = async (event) => {
+  const method = event.httpMethod;
+  const path = event.path;
+
+  if (method === 'GET' && path.endsWith('/agents')) {
+    const token = extractBearerToken(
+      event.headers?.Authorization ?? event.headers?.authorization,
+    );
+    if (!token) {
+      return jsonResponse(401, { error: 'Missing authorization' });
+    }
+    try {
+      return await handleListAgents(token);
+    } catch {
+      return jsonResponse(401, { error: 'Invalid token' });
+    }
+  }
+
+  if (method === 'POST' && path.endsWith('/agents/pair')) {
+    const clerkToken = extractBearerToken(
+      event.headers?.Authorization ?? event.headers?.authorization,
+    );
+    if (!clerkToken) {
+      return jsonResponse(401, { error: 'Missing authorization' });
+    }
+
+    let body: {
+      agentId?: string;
+      publicKey?: string;
+      platform?: string;
+      name?: string;
+    };
+    try {
+      body = JSON.parse(event.body ?? '{}') as typeof body;
+    } catch {
+      return jsonResponse(400, { error: 'Invalid JSON body' });
+    }
+
+    try {
+      return await handlePairAgent(clerkToken, body);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Pairing failed';
+      if (message === 'INVALID_CLERK_JWT') {
+        return jsonResponse(401, { error: 'Invalid Clerk token' });
+      }
+      return jsonResponse(500, { error: message });
+    }
+  }
+
+  return jsonResponse(404, { error: 'Not found' });
+};

@@ -29,9 +29,12 @@ describe('router dispatch', () => {
     expect(getHandlerForMessageType('ICE_CANDIDATE')).toBeDefined();
   });
 
+  it('resolves REFRESH_SESSION handler', () => {
+    expect(getHandlerForMessageType('REFRESH_SESSION')).toBeDefined();
+  });
+
   it('returns undefined for unknown message types', () => {
     expect(getHandlerForMessageType('AUTH_APPROVE')).toBeUndefined();
-    expect(getHandlerForMessageType('REFRESH_SESSION')).toBeUndefined();
     expect(getHandlerForMessageType('NOT_A_REAL_TYPE')).toBeUndefined();
   });
 });

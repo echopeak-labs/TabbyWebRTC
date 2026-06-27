@@ -39,9 +39,9 @@ This file is the single source of truth for tracking the implementation status o
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
 | `backend/01-architecture.md` | `agent-backend-01` | `review` | CDK scaffold in `infra/`; 4 DynamoDB tables + Lambda IAM role; `cdk synth` verified for dev/prod |
-| `backend/02-signaling-server.md` | `agent-singal-server` | `review` | WebSocket connect/disconnect/router in `infra/lambda/src/`; agent register/heartbeat, SUBSCRIBE/UNSUBSCRIBE locks, SDP/ICE relay; `sendToConnection` with GoneException cleanup; 11 Jest tests pass; SUBSCRIBE JWT check is token-presence only until backend/04; agents table TTL attribute not in CDK table yet (offline via disconnect + heartbeat lastSeen) |
+| `backend/02-signaling-server.md` | `agent-singal-server` | `review` | WebSocket connect/disconnect/router in `infra/lambda/src/`; agent register/heartbeat, SUBSCRIBE/UNSUBSCRIBE locks, SDP/ICE relay; `sendToConnection` with GoneException cleanup; 22 Jest tests pass; SUBSCRIBE now validates TabbyRDP JWT via backend/04 |
 | `backend/03-aws-infra.md` | `agent-aws-infra` | `review` | WebSocket + REST APIs wired in CDK; 4 Lambda stubs for bundling; `cdk synth` OK for dev/prod; `cdk diff`/`deploy` blocked until AWS credentials configured |
-| `backend/04-auth-service.md` | — | `not-started` | Clerk JWT validation, QR session flow, TabbyRDP JWT issuance, pairing |
+| `backend/04-auth-service.md` | `agent-auth-service` | `review` | Clerk JWKS + TabbyRDP/agent JWT via `jose`; QR `SESSION_PENDING`/`REFRESH_SESSION`; `POST /auth/approve`, `POST /agents/pair`, `GET /agents`, `GET /turn-credentials`; agents table TTL added; 22 Jest tests pass; E2E dev deploy blocked until AWS credentials configured; agent WebSocket auth uses `?token=` query param (API GW v2 has no connect headers) |
 
 **Backend Dependencies:**
 - `02` depends on `01` (tables must be defined)

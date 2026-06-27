@@ -161,16 +161,16 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## backend/04-auth-service.md
 
-- [ ] Install `jose` and `@clerk/backend` packages in Lambda bundle
-- [ ] Implement `verifyClerkJwt(token)` using `jose.createRemoteJWKSet` against Clerk JWKS URL
-- [ ] Implement `verifyTabbyRDPToken(token)` using HS256 + `TABBYRDP_JWT_SECRET`
-- [ ] Create `lambda/src/handlers/auth.ts`: implement `AUTH_APPROVE` flow (verify Clerk JWT, consume pendingSessionId, issue TabbyRDP JWT, send `AUTH_APPROVED` to browser)
-- [ ] Implement QR session creation in `$connect` handler: generate UUID pendingSessionId, store in DynamoDB, send `SESSION_PENDING`
-- [ ] Implement QR refresh: handle `REFRESH_SESSION` message → rotate pendingSessionId
-- [ ] Implement `POST /agents/pair` Lambda handler: verify Clerk JWT, store agent record, issue agent JWT (1-year)
-- [ ] Implement `GET /agents` Lambda handler: query agents table by userId GSI, return list
-- [ ] Implement `GET /turn-credentials` Lambda handler: generate HMAC-SHA256 TURN credentials with configurable TTL
-- [ ] Write unit tests for all JWT issuance and validation paths
+- [x] Install `jose` and `@clerk/backend` packages in Lambda bundle
+- [x] Implement `verifyClerkJwt(token)` using `jose.createRemoteJWKSet` against Clerk JWKS URL
+- [x] Implement `verifyTabbyRDPToken(token)` using HS256 + `TABBYRDP_JWT_SECRET`
+- [x] Create `lambda/src/handlers/auth.ts`: implement `AUTH_APPROVE` flow (verify Clerk JWT, consume pendingSessionId, issue TabbyRDP JWT, send `AUTH_APPROVED` to browser)
+- [x] Implement QR session creation in `$connect` handler: generate UUID pendingSessionId, store in DynamoDB, send `SESSION_PENDING`
+- [x] Implement QR refresh: handle `REFRESH_SESSION` message → rotate pendingSessionId
+- [x] Implement `POST /agents/pair` Lambda handler: verify Clerk JWT, store agent record, issue agent JWT (1-year)
+- [x] Implement `GET /agents` Lambda handler: query agents table by userId GSI, return list
+- [x] Implement `GET /turn-credentials` Lambda handler: generate HMAC-SHA256 TURN credentials with configurable TTL
+- [x] Write unit tests for all JWT issuance and validation paths
 - [ ] Test full auth flow end-to-end against dev environment
 
 ---

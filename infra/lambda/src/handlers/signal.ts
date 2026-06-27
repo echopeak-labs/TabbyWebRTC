@@ -14,6 +14,7 @@ import type {
 } from '../types.js';
 import { findAgentConnectionId, findBrowserConnectionsByAgentId } from '../lib/connections.js';
 import { docClient } from '../lib/dynamodb.js';
+import { verifyTabbyRDPToken, type TabbyRDPTokenPayload } from '../lib/jwt.js';
 import { sourceLocksTable, SOURCE_LOCK_TTL_SECONDS } from '../lib/env.js';
 import { sendToConnection } from '../lib/send-to-connection.js';
 
@@ -27,17 +28,28 @@ async function getSourceLock(sourceId: string): Promise<SourceLockRecord | undef
   return result.Item as SourceLockRecord | undefined;
 }
 
-function requireSessionToken(connection: ConnectionRecord): void {
+async function requireValidSessionToken(
+  connection: ConnectionRecord,
+): Promise<TabbyRDPTokenPayload> {
   if (!connection.token) {
     throw new Error('UNAUTHORIZED');
   }
+
+  const payload = await verifyTabbyRDPToken(connection.token);
+  if (connection.agentId && payload.agentId !== connection.agentId) {
+    throw new Error('UNAUTHORIZED');
+  }
+  if (connection.userId && payload.sub !== connection.userId) {
+    throw new Error('UNAUTHORIZED');
+  }
+  return payload;
 }
 
 export async function handleSubscribe(
   message: SubscribeMessage,
   connection: ConnectionRecord,
 ): Promise<void> {
-  requireSessionToken(connection);
+  await requireValidSessionToken(connection);
 
   if (!connection.agentId) {
     throw new Error('NO_AGENT');

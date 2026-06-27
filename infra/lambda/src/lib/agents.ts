@@ -1,9 +1,62 @@
-import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type { AgentRecord } from '../types.js';
 import { findBrowserConnectionsByAgentId } from './connections.js';
 import { docClient } from './dynamodb.js';
 import { agentsTable, AGENT_HEARTBEAT_TTL_SECONDS } from './env.js';
 import { sendToConnection } from './send-to-connection.js';
+
+export async function getAgent(agentId: string): Promise<AgentRecord | undefined> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: agentsTable(),
+      Key: { agentId },
+    }),
+  );
+  return result.Item as AgentRecord | undefined;
+}
+
+export async function listAgentsByUserId(userId: string): Promise<AgentRecord[]> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: agentsTable(),
+      IndexName: 'userId-index',
+      KeyConditionExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+      },
+    }),
+  );
+  return (result.Items ?? []) as AgentRecord[];
+}
+
+export async function pairAgent(input: {
+  agentId: string;
+  userId: string;
+  publicKey: string;
+  platform: string;
+  name: string;
+}): Promise<AgentRecord> {
+  const now = Date.now();
+  const item: AgentRecord = {
+    agentId: input.agentId,
+    userId: input.userId,
+    name: input.name,
+    connectionId: '',
+    publicKey: input.publicKey,
+    platform: input.platform,
+    displays: [],
+    apps: [],
+    online: false,
+    lastSeen: now,
+  };
+  await docClient.send(
+    new PutCommand({
+      TableName: agentsTable(),
+      Item: item,
+    }),
+  );
+  return item;
+}
 
 export async function markAgentOffline(agentId: string): Promise<void> {
   const now = Date.now();
