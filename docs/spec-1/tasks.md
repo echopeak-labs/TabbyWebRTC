@@ -177,10 +177,10 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## cicd/01-pipeline.md
 
-- [ ] Create `.github/workflows/pr-check.yml`: lint + typecheck + build for frontend, backend, and agent; cargo clippy + test
-- [ ] Create `.github/workflows/frontend.yml`: `npm ci` → `npm run build` with Vite env vars → `wrangler pages deploy`
-- [ ] Create `.github/workflows/backend.yml`: `npm ci` → `npx cdk deploy TabbyRDPProd` with OIDC auth
-- [ ] Create `.github/workflows/desktop-agent.yml`: matrix build for all 5 platform/arch targets; upload artifacts; create GitHub Release on tag
+- [x] Create `.github/workflows/pr-check.yml`: lint + typecheck + build for frontend, backend, and agent; cargo clippy + test
+- [x] Create `.github/workflows/frontend.yml`: `npm ci` → `npm run build` with Vite env vars → `wrangler pages deploy`
+- [x] Create `.github/workflows/backend.yml`: `npm ci` → `npx cdk deploy TabbyRDPProd` with OIDC auth
+- [x] Create `.github/workflows/desktop-agent.yml`: matrix build for all 5 platform/arch targets; upload artifacts; create GitHub Release on tag
 - [ ] Add all required GitHub Secrets to the repository (see spec secrets reference table)
 - [ ] Test PR check workflow on a feature branch
 - [ ] Test frontend deploy workflow by merging a frontend change to `main`
@@ -191,17 +191,17 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## cicd/02-scripts.md
 
-- [ ] Create `scripts/setup-dev.sh`: verify prerequisites, `npm ci` frontend + infra, `cargo build` agent, copy `.env.example` files
-- [ ] Create `scripts/dev-backend.sh`: SAM local start with `env.local.json`
-- [ ] Create `scripts/dev-frontend.sh`: Vite dev server with local backend env vars
-- [ ] Create `scripts/bootstrap-aws.sh`: CDK bootstrap + OIDC provider creation + deploy IAM role
-- [ ] Create `scripts/provision-turn.sh`: SSH-based CoTURN install and config on target VPS
-- [ ] Create `scripts/rotate-secrets.sh`: regenerate `TABBYRDP_JWT_SECRET` and update GitHub Secrets via `gh` CLI
-- [ ] Create `scripts/release.sh`: tag + push to trigger release workflow
-- [ ] Create `scripts/check-costs.sh`: AWS Cost Explorer query scoped to `project=tabbyrdp` tag
-- [ ] `chmod +x` all scripts
-- [ ] Document prerequisite tools in `scripts/README` or inline help text (`--help`)
-- [ ] Test `setup-dev.sh` on a clean machine (or Docker container)
+- [x] Create `scripts/setup-dev.sh`: verify prerequisites, `npm ci` frontend + infra, `cargo build` agent, copy `.env.example` files
+- [x] Create `scripts/dev-backend.sh`: SAM local start with `env.local.json`
+- [x] Create `scripts/dev-frontend.sh`: Vite dev server with local backend env vars
+- [x] Create `scripts/bootstrap-aws.sh`: CDK bootstrap + OIDC provider creation + deploy IAM role
+- [x] Create `scripts/provision-turn.sh`: SSH-based CoTURN install and config on target VPS
+- [x] Create `scripts/rotate-secrets.sh`: regenerate `TABBYRDP_JWT_SECRET` and update GitHub Secrets via `gh` CLI
+- [x] Create `scripts/release.sh`: tag + push to trigger release workflow
+- [x] Create `scripts/check-costs.sh`: AWS Cost Explorer query scoped to `project=tabbyrdp` tag
+- [x] `chmod +x` all scripts
+- [x] Document prerequisite tools in `scripts/README` or inline help text (`--help`)
+- [x] Test `setup-dev.sh` on a clean machine (or Docker container)
 
 ---
 

@@ -1,0 +1,44 @@
+# TabbyRDP Scripts
+
+Developer and CI utility scripts for local development, AWS deployment, and release management.
+
+Run any script with `--help` for usage and prerequisites.
+
+## Prerequisites
+
+| Tool | Used by |
+|---|---|
+| Node.js 22+ | setup-dev, dev-frontend, deploy-* |
+| Rust stable | setup-dev |
+| AWS CLI v2 | setup-dev, bootstrap-aws, deploy-*, check-costs |
+| AWS SAM CLI | dev-backend |
+| GitHub CLI (`gh`) | rotate-secrets |
+| OpenSSL | rotate-secrets |
+| SSH | provision-turn |
+
+## Quick start
+
+```bash
+./scripts/setup-dev.sh
+./scripts/dev-backend.sh    # terminal 1
+./scripts/dev-frontend.sh   # terminal 2 (set CLERK_PUBLISHABLE_KEY)
+```
+
+## Script reference
+
+| Script | Purpose |
+|---|---|
+| `setup-dev.sh` | One-time dev machine setup |
+| `dev-backend.sh` | SAM local API on port 3001 |
+| `dev-frontend.sh` | Vite dev server on port 5173 |
+| `deploy-dev.sh` | Deploy TabbyRDPDev CDK stack |
+| `deploy-prod.sh` | Deploy TabbyRDPProd (requires confirmation) |
+| `bootstrap-aws.sh` | CDK bootstrap + GitHub OIDC deploy role |
+| `provision-turn.sh` | SSH CoTURN install on Hetzner VPS |
+| `rotate-secrets.sh` | Rotate TABBYRDP_JWT_SECRET in GitHub Secrets |
+| `release.sh` | Tag version and push to trigger release workflow |
+| `check-costs.sh` | Query AWS Cost Explorer for tabbyrdp-tagged spend |
+
+## Local backend env
+
+Copy `scripts/env.local.json.example` to `infra/env.local.json` and edit values before running `dev-backend.sh`. `setup-dev.sh` copies this automatically if the file is missing.

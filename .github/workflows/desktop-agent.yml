@@ -1,0 +1,75 @@
+name: Build Desktop Agent
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop-agent/**'
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: tabbyrdp-agent-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: tabbyrdp-agent-linux-aarch64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: tabbyrdp-agent-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: tabbyrdp-agent-macos-aarch64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: tabbyrdp-agent-windows-x86_64.exe
+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop-agent
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop-agent
+      - name: Install cross-compile deps (aarch64 Linux)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          mkdir -p .cargo
+          printf '[target.aarch64-unknown-linux-gnu]\nlinker = "aarch64-linux-gnu-gcc"\n' >> .cargo/config.toml
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Rename binary
+        shell: bash
+        run: |
+          SRC=target/${{ matrix.target }}/release/tabbyrdp-agent
+          [[ "${{ matrix.os }}" == "windows-latest" ]] && SRC="${SRC}.exe"
+          cp "$SRC" "${{ matrix.artifact }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: desktop-agent/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*

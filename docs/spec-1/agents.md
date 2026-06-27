@@ -54,8 +54,8 @@ This file is the single source of truth for tracking the implementation status o
 
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
-| `cicd/01-pipeline.md` | — | `not-started` | GH Actions: pr-check, frontend deploy, backend deploy, desktop-agent build |
-| `cicd/02-scripts.md` | — | `not-started` | Shell scripts: setup-dev, deploy, bootstrap-aws, provision-turn, release |
+| `cicd/01-pipeline.md` | `agent-cicd-pipeline` | `review` | Four workflows in `.github/workflows/`; `cdk synth` + `cargo check`/`test` verified locally; PR check blocked until `frontend/` exists, `infra` adds lint/typecheck scripts, desktop-agent clippy warnings fixed; GitHub secrets + workflow E2E tests require human setup |
+| `cicd/02-scripts.md` | `agent-cicd-scripting` | `review` | 10 scripts in `scripts/` + README + env.local.json.example; deploy-dev/prod added per spec inventory; full setup-dev blocked until frontend/01 scaffolds `frontend/` and `.env.example` |
 
 **CI/CD Dependencies:**
 - `01-pipeline.md` depends on frontend, backend, and desktop-agent builds existing
