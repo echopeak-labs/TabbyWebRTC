@@ -40,7 +40,7 @@ This file is the single source of truth for tracking the implementation status o
 |---|---|---|---|
 | `backend/01-architecture.md` | `agent-backend-01` | `review` | CDK scaffold in `infra/`; 4 DynamoDB tables + Lambda IAM role; `cdk synth` verified for dev/prod |
 | `backend/02-signaling-server.md` | — | `not-started` | Lambda router, connection lifecycle, SDP/ICE relay, subscription locks |
-| `backend/03-aws-infra.md` | — | `not-started` | Full CDK stack, REST API, env vars, stack outputs |
+| `backend/03-aws-infra.md` | `agent-aws-infra` | `review` | WebSocket + REST APIs wired in CDK; 4 Lambda stubs for bundling; `cdk synth` OK for dev/prod; `cdk diff`/`deploy` blocked until AWS credentials configured |
 | `backend/04-auth-service.md` | — | `not-started` | Clerk JWT validation, QR session flow, TabbyRDP JWT issuance, pairing |
 
 **Backend Dependencies:**

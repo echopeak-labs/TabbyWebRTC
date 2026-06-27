@@ -146,14 +146,14 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## backend/03-aws-infra.md
 
-- [ ] Create `lib/constructs/websocket-api.ts`: define `WebSocketApi` with `$connect`, `$disconnect`, `$default` routes
-- [ ] Create `lib/constructs/lambda-functions.ts`: define `wsHandlerFn` (ARM64, Node 22, 128 MB) and `turnFn`
-- [ ] Wire `WS_CALLBACK_URL` environment variable to `wsHandlerFn` after API creation
-- [ ] Add `execute-api:ManageConnections` IAM policy to Lambda role
-- [ ] Define REST API with `GET /turn-credentials` route
-- [ ] Define `GET /agents`, `POST /agents/pair`, `POST /auth/approve` REST routes
-- [ ] Add `CfnOutput` for `WsEndpoint` and `RestEndpoint`
-- [ ] Implement multi-environment context switching (`env=dev` vs `env=prod`) in stack
+- [x] Create `lib/constructs/websocket-api.ts`: define `WebSocketApi` with `$connect`, `$disconnect`, `$default` routes
+- [x] Create `lib/constructs/lambda-functions.ts`: define `wsHandlerFn` (ARM64, Node 22, 128 MB) and `turnFn`
+- [x] Wire `WS_CALLBACK_URL` environment variable to `wsHandlerFn` after API creation
+- [x] Add `execute-api:ManageConnections` IAM policy to Lambda role
+- [x] Define REST API with `GET /turn-credentials` route
+- [x] Define `GET /agents`, `POST /agents/pair`, `POST /auth/approve` REST routes
+- [x] Add `CfnOutput` for `WsEndpoint` and `RestEndpoint`
+- [x] Implement multi-environment context switching (`env=dev` vs `env=prod`) in stack
 - [ ] Run `cdk diff` against dev account before first deploy
 - [ ] Run `cdk deploy TabbyRDPDev` to validate stack deploys cleanly
 
