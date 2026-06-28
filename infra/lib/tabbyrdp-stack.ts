@@ -30,6 +30,7 @@ export class TabbyRdpStack extends Stack {
     const lambdas = new LambdaFunctions(this, 'Lambdas', {
       tables: this.tables,
       lambdaRole: this.roles.lambdaRole,
+      envName: props.envName,
     });
 
     const wsApi = new WebSocketApiConstruct(this, 'WebSocketApi', {
@@ -68,7 +69,25 @@ export class TabbyRdpStack extends Stack {
       authorizationType: AuthorizationType.NONE,
     });
 
+    const updatesResource = restApi.root.addResource('updates');
+    const manifestResource = updatesResource.addResource('manifest.json');
+    manifestResource.addMethod('GET', new LambdaIntegration(lambdas.updatesFn), {
+      authorizationType: AuthorizationType.NONE,
+    });
+
+    const downloadsResource = restApi.root.addResource('downloads');
+    const platformResource = downloadsResource.addResource('{platform}');
+    platformResource.addMethod('GET', new LambdaIntegration(lambdas.updatesFn), {
+      authorizationType: AuthorizationType.NONE,
+    });
+
     new CfnOutput(this, 'WsEndpoint', { value: wsApi.wsStage.url });
     new CfnOutput(this, 'RestEndpoint', { value: restApi.url });
+    new CfnOutput(this, 'UpdateManifestUrl', {
+      value: `${restApi.url}updates/manifest.json`,
+    });
+    new CfnOutput(this, 'DownloadBaseUrl', {
+      value: `${restApi.url}downloads/`,
+    });
   }
 }

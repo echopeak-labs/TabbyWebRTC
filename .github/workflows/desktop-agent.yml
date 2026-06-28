@@ -4,31 +4,67 @@ on:
     branches: [main]
     paths:
       - 'desktop-agent/**'
+      - '.github/workflows/desktop-agent.yml'
+      - 'scripts/generate-manifest.sh'
     tags:
       - 'v*'
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      env_prefix: ${{ steps.meta.outputs.env_prefix }}
+      should_publish: ${{ steps.meta.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "env_prefix=prod" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            version="$(grep '^package.version' desktop-agent/Cargo.toml | head -1 | sed 's/.*= "\(.*\)".*/\1/')"
+            echo "version=${version}" >> "$GITHUB_OUTPUT"
+            echo "env_prefix=dev" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0" >> "$GITHUB_OUTPUT"
+            echo "env_prefix=dev" >> "$GITHUB_OUTPUT"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: prepare
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: tabbyrdp-agent-linux-x86_64
+            platform_key: linux-x86_64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             artifact: tabbyrdp-agent-linux-aarch64
+            platform_key: linux-aarch64
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact: tabbyrdp-agent-macos-x86_64
+            platform_key: macos-x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact: tabbyrdp-agent-macos-aarch64
+            platform_key: macos-aarch64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: tabbyrdp-agent-windows-x86_64.exe
+            platform_key: windows-x86_64
 
     runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
     defaults:
       run:
         working-directory: desktop-agent
@@ -47,6 +83,21 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu
           mkdir -p .cargo
           printf '[target.aarch64-unknown-linux-gnu]\nlinker = "aarch64-linux-gnu-gcc"\n' >> .cargo/config.toml
+      - name: Install nfpm (Linux)
+        if: startsWith(matrix.platform_key, 'linux-')
+        shell: bash
+        run: |
+          sudo apt-get install -y gettext-base
+          if [[ "${{ matrix.platform_key }}" == "linux-aarch64" ]]; then
+            pkg=arm64
+          else
+            pkg=amd64
+          fi
+          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_${pkg}.deb" -o /tmp/nfpm.deb
+          sudo dpkg -i /tmp/nfpm.deb
+      - name: Install WiX Toolset (Windows)
+        if: matrix.platform_key == 'windows-x86_64'
+        run: choco install wixtoolset -y --no-progress
       - run: cargo build --release --target ${{ matrix.target }}
       - name: Rename binary
         shell: bash
@@ -54,13 +105,62 @@ jobs:
           SRC=target/${{ matrix.target }}/release/tabbyrdp-agent
           [[ "${{ matrix.os }}" == "windows-latest" ]] && SRC="${SRC}.exe"
           cp "$SRC" "${{ matrix.artifact }}"
+      - name: Package installer
+        shell: bash
+        run: |
+          chmod +x packaging/build.sh packaging/macos/build-pkg.sh packaging/deb/postinstall.sh
+          ./packaging/build.sh "${{ matrix.platform_key }}" "$VERSION"
+      - name: Compute SHA-256
+        shell: bash
+        run: |
+          : > packaged/checksum.txt
+          for f in packaged/*; do
+            case "$f" in
+              *.deb|*.pkg|*.msi)
+                if command -v sha256sum >/dev/null; then
+                  sha256sum "$f" >> packaged/checksum.txt
+                else
+                  shasum -a 256 "$f" >> packaged/checksum.txt
+                fi
+                ;;
+            esac
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: desktop-agent/${{ matrix.artifact }}
+          name: installer-${{ matrix.platform_key }}
+          path: desktop-agent/packaged/
+
+  publish:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      UPDATE_ENV_PREFIX: ${{ needs.prepare.outputs.env_prefix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Generate manifest.json
+        run: |
+          chmod +x scripts/generate-manifest.sh
+          ./scripts/generate-manifest.sh "$VERSION" artifacts/ > manifest.json
+          cat manifest.json
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          aws s3 cp manifest.json "s3://${{ secrets.R2_BUCKET }}/${UPDATE_ENV_PREFIX}/manifest.json" --endpoint-url "$AWS_ENDPOINT_URL"
+          find artifacts -type f \( -name '*.deb' -o -name '*.pkg' -o -name '*.msi' \) -print0 | while IFS= read -r -d '' f; do
+            aws s3 cp "$f" "s3://${{ secrets.R2_BUCKET }}/${UPDATE_ENV_PREFIX}/${VERSION}/$(basename "$f")" --endpoint-url "$AWS_ENDPOINT_URL"
+          done
 
   release:
-    needs: build
+    needs: [prepare, build]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -72,4 +172,4 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/**/*

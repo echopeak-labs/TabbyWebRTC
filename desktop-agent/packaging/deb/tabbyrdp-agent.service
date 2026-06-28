@@ -1,0 +1,13 @@
+[Unit]
+Description=TabbyRDP desktop streaming agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/tabbyrdp-agent
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

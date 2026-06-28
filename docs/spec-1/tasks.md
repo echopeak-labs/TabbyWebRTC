@@ -273,34 +273,34 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## backend/05-update-distribution.md
 
-- [ ] Define manifest JSON schema and platform key enum in `infra/lambda/src/lib/manifest.ts`
-- [ ] Implement R2 S3 client helper with streaming get in `infra/lambda/src/lib/r2.ts`
-- [ ] Implement manifest handler: read `{env}/manifest.json` from R2, return JSON with cache headers
-- [ ] Implement download proxy handler: resolve platform from manifest, stream artifact from R2
-- [ ] Wire `GET /updates/manifest.json` and `GET /downloads/{platform}` routes in `infra/lib/tabbyrdp-stack.ts`
-- [ ] Add `updatesFn` Lambda to `infra/lib/constructs/lambda-functions.ts` with R2 env vars
-- [ ] Pass `UPDATE_ENV_PREFIX` from CDK `envName` prop into updates Lambda
-- [ ] Add CDK outputs: `UpdateManifestUrl`, `DownloadBaseUrl`
-- [ ] Unit tests: manifest parsing, platform resolution, 404 for unknown platform
-- [ ] Document required deploy-time secrets (R2 credentials) in spec
-- [ ] Verify `cdk synth --context env=dev` and `cdk synth --context env=prod` complete without errors
+- [x] Define manifest JSON schema and platform key enum in `infra/lambda/src/lib/manifest.ts`
+- [x] Implement R2 S3 client helper with streaming get in `infra/lambda/src/lib/r2.ts`
+- [x] Implement manifest handler: read `{env}/manifest.json` from R2, return JSON with cache headers
+- [x] Implement download proxy handler: resolve platform from manifest, stream artifact from R2
+- [x] Wire `GET /updates/manifest.json` and `GET /downloads/{platform}` routes in `infra/lib/tabbyrdp-stack.ts`
+- [x] Add `updatesFn` Lambda to `infra/lib/constructs/lambda-functions.ts` with R2 env vars
+- [x] Pass `UPDATE_ENV_PREFIX` from CDK `envName` prop into updates Lambda
+- [x] Add CDK outputs: `UpdateManifestUrl`, `DownloadBaseUrl`
+- [x] Unit tests: manifest parsing, platform resolution, 404 for unknown platform
+- [x] Document required deploy-time secrets (R2 credentials) in spec
+- [x] Verify `cdk synth --context env=dev` and `cdk synth --context env=prod` complete without errors
 
 ---
 
 ## cicd/03-agent-release-distribution.md
 
-- [ ] Create `desktop-agent/packaging/deb/` with nfpm config, systemd unit, and postinstall script
-- [ ] Create `desktop-agent/packaging/wix/` with WiX source for Windows MSI
-- [ ] Create `desktop-agent/packaging/macos/build-pkg.sh` for macOS `.pkg` builds
-- [ ] Create `desktop-agent/packaging/build.sh` dispatcher invoked per matrix target
-- [ ] Extend `desktop-agent.yml` release workflow: package step after `cargo build --release`
-- [ ] Add SHA-256 computation step per installer artifact
-- [ ] Add publish job: generate `manifest.json` from build outputs
-- [ ] Add R2 upload step with env prefix (`dev` on main, `prod` on `v*` tag)
-- [ ] Upload manifest to `{env}/manifest.json` and artifacts to `{env}/{version}/`
-- [ ] Add R2 secrets to GitHub Secrets reference (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ACCOUNT_ID`, `DEV_REST_URL`)
-- [ ] Create `scripts/publish-agent-release.sh` mirroring CI publish steps
-- [ ] Create root `README.md` with dev download link table (stub `REPLACE_DEV_REST_URL` placeholders)
+- [x] Create `desktop-agent/packaging/deb/` with nfpm config, systemd unit, and postinstall script
+- [x] Create `desktop-agent/packaging/wix/` with WiX source for Windows MSI
+- [x] Create `desktop-agent/packaging/macos/build-pkg.sh` for macOS `.pkg` builds
+- [x] Create `desktop-agent/packaging/build.sh` dispatcher invoked per matrix target
+- [x] Extend `desktop-agent.yml` release workflow: package step after `cargo build --release`
+- [x] Add SHA-256 computation step per installer artifact
+- [x] Add publish job: generate `manifest.json` from build outputs
+- [x] Add R2 upload step with env prefix (`dev` on main, `prod` on `v*` tag)
+- [x] Upload manifest to `{env}/manifest.json` and artifacts to `{env}/{version}/`
+- [x] Add R2 secrets to GitHub Secrets reference (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ACCOUNT_ID`, `DEV_REST_URL`)
+- [x] Create `scripts/publish-agent-release.sh` mirroring CI publish steps
+- [x] Create root `README.md` with dev download link table (stub `REPLACE_DEV_REST_URL` placeholders)
 - [ ] Verify tag release produces 5 installers + manifest in R2 `prod/` prefix
 - [ ] Verify README dev links download correct artifact via API Gateway after deploy
 

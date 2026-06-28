@@ -9,6 +9,7 @@ import { DynamoDbTables } from './dynamodb-tables';
 export interface LambdaFunctionsProps {
   tables: DynamoDbTables;
   lambdaRole: IRole;
+  envName: 'dev' | 'prod';
 }
 
 function envOrPlaceholder(key: string, placeholder: string): string {
@@ -20,6 +21,7 @@ export class LambdaFunctions extends Construct {
   public readonly turnFn: NodejsFunction;
   public readonly agentFn: NodejsFunction;
   public readonly authFn: NodejsFunction;
+  public readonly updatesFn: NodejsFunction;
 
   constructor(scope: Construct, id: string, props: LambdaFunctionsProps) {
     super(scope, id);
@@ -83,6 +85,27 @@ export class LambdaFunctions extends Construct {
       timeout: Duration.seconds(10),
       role: props.lambdaRole,
       environment: commonEnv,
+      bundling,
+    });
+
+    this.updatesFn = new NodejsFunction(this, 'UpdatesHandler', {
+      entry: 'lambda/src/handlers/updates.ts',
+      handler: 'handler',
+      runtime: Runtime.NODEJS_22_X,
+      architecture: Architecture.ARM_64,
+      memorySize: 256,
+      timeout: Duration.seconds(30),
+      role: props.lambdaRole,
+      environment: {
+        R2_BUCKET: envOrPlaceholder('R2_BUCKET', 'tabbyrdp-releases'),
+        R2_ENDPOINT: envOrPlaceholder(
+          'R2_ENDPOINT',
+          'https://placeholder.r2.cloudflarestorage.com',
+        ),
+        R2_ACCESS_KEY_ID: envOrPlaceholder('R2_ACCESS_KEY_ID', 'placeholder'),
+        R2_SECRET_ACCESS_KEY: envOrPlaceholder('R2_SECRET_ACCESS_KEY', 'placeholder'),
+        UPDATE_ENV_PREFIX: props.envName,
+      },
       bundling,
     });
 

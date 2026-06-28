@@ -42,7 +42,7 @@ This file is the single source of truth for tracking the implementation status o
 | `backend/02-signaling-server.md` | `agent-singal-server` | `review` | WebSocket connect/disconnect/router in `infra/lambda/src/`; agent register/heartbeat, SUBSCRIBE/UNSUBSCRIBE locks, SDP/ICE relay; `sendToConnection` with GoneException cleanup; 22 Jest tests pass; SUBSCRIBE now validates TabbyRDP JWT via backend/04 |
 | `backend/03-aws-infra.md` | `agent-aws-infra` | `review` | WebSocket + REST APIs wired in CDK; 4 Lambda stubs for bundling; `cdk synth` OK for dev/prod; `cdk diff`/`deploy` blocked until AWS credentials configured |
 | `backend/04-auth-service.md` | `agent-auth-service` | `review` | Clerk JWKS + TabbyRDP/agent JWT via `jose`; QR `SESSION_PENDING`/`REFRESH_SESSION`; `POST /auth/approve`, `POST /agents/pair`, `GET /agents`, `GET /turn-credentials`; agents table TTL added; 22 Jest tests pass; E2E dev deploy blocked until AWS credentials configured; agent WebSocket auth uses `?token=` query param (API GW v2 has no connect headers) |
-| `backend/05-update-distribution.md` | | `not-started` | R2-backed update API: `GET /updates/manifest.json`, `GET /downloads/{platform}`; dev/prod stacks read separate R2 prefixes |
+| `backend/05-update-distribution.md` | `agent-update-api` | `review` | `updatesFn` Lambda + R2 lib; `GET /updates/manifest.json` + `GET /downloads/{platform}`; dev/prod `UPDATE_ENV_PREFIX`; 12 Jest tests; E2E curl verify blocked until R2 secrets + deploy |
 
 **Backend Dependencies:**
 - `02` depends on `01` (tables must be defined)
@@ -58,7 +58,7 @@ This file is the single source of truth for tracking the implementation status o
 |---|---|---|---|
 | `cicd/01-pipeline.md` | `agent-cicd-pipeline` | `review` | Four workflows in `.github/workflows/`; `cdk synth` + `cargo check`/`test` verified locally; PR check blocked until `frontend/` exists, `infra` adds lint/typecheck scripts, desktop-agent clippy warnings fixed; GitHub secrets + workflow E2E tests require human setup |
 | `cicd/02-scripts.md` | `agent-cicd-scripting` | `review` | 10 scripts in `scripts/` + README + env.local.json.example; deploy-dev/prod added per spec inventory; full setup-dev blocked until frontend/01 scaffolds `frontend/` and `.env.example` |
-| `cicd/03-agent-release-distribution.md` | | `not-started` | Native installers (.deb/.msi/.pkg), R2 publish, manifest generation, root README dev download links |
+| `cicd/03-agent-release-distribution.md` | `agent-release-cicd` | `review` | Packaging (deb/msi/pkg), `generate-manifest.sh`, R2 publish job in desktop-agent.yml, `publish-agent-release.sh`, root README dev links; E2E R2/API verify blocked until R2 secrets + backend/05 deploy; Windows/macOS signing notarization out of scope |
 
 **CI/CD Dependencies:**
 - `01-pipeline.md` depends on frontend, backend, and desktop-agent builds existing
