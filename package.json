@@ -1,0 +1,31 @@
+{
+  "name": "tabbyrdp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Remote desktop streaming with a browser-based viewer and mobile auth key",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "setup": "bash scripts/setup-dev.sh",
+    "dev:frontend": "bash scripts/dev-frontend.sh",
+    "dev:backend": "bash scripts/dev-backend.sh",
+    "build": "npm run build:frontend && npm run build:infra && npm run build:agent",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:infra": "npm run build --prefix infra",
+    "build:agent": "cargo build --release --manifest-path desktop-agent/Cargo.toml",
+    "package:agent": "bash scripts/package-agent-local.sh",
+    "test": "npm run test:infra && npm run test:agent && npm run test:frontend",
+    "test:frontend": "npm run typecheck --prefix frontend",
+    "test:infra": "npm test --prefix infra",
+    "test:agent": "cargo test --manifest-path desktop-agent/Cargo.toml",
+    "lint": "npm run lint --prefix frontend",
+    "typecheck": "npm run typecheck --prefix frontend && npm run build --prefix infra",
+    "cdk:synth": "npm run cdk --prefix infra -- synth --context env=dev",
+    "cdk:synth:prod": "npm run cdk --prefix infra -- synth --context env=prod",
+    "cdk:deploy:dev": "bash scripts/deploy-dev.sh",
+    "cdk:deploy:prod": "bash scripts/deploy-prod.sh",
+    "release:agent": "bash scripts/release.sh",
+    "publish:agent": "bash scripts/publish-agent-release.sh"
+  }
+}
