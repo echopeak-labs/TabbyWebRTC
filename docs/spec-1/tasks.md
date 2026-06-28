@@ -83,19 +83,19 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## frontend/04-input-handling.md
 
-- [ ] Implement `src/lib/input-codec.ts`: serialize all `InputPayload` types to JSON strings
-- [ ] Implement `useInputChannel` hook per spec interface
-- [ ] Attach `keydown` / `keyup` event listeners using `event.code` (not `event.key`)
-- [ ] Implement `activateKeyboardLock()`: `requestFullscreen` then `navigator.keyboard.lock([...])`
-- [ ] Implement `releaseKeyboardLock()` on StreamPage unmount
-- [ ] Implement absolute mouse coordinate transform: `getAbsoluteCoordinates(event, videoEl, nativeW, nativeH)`
-- [ ] Implement mouse move throttle: max 1 event per 8 ms (timestamp gate)
-- [ ] Implement Pointer Lock API for relative mouse mode: `videoElement.requestPointerLock()`
-- [ ] Suppress right-click context menu on video element
-- [ ] Implement `MOUSE_SCROLL` from `wheel` events with `deltaX` and `deltaY`
-- [ ] Implement custom CSS cursor overlay (Amber dot) over video element; hide default cursor
-- [ ] Implement clipboard paste: `navigator.clipboard.readText()` → `CLIPBOARD_PASTE` payload
-- [ ] Build `ControlBar.tsx` component with all command buttons per spec table
+- [x] Implement `src/lib/input-codec.ts`: serialize all `InputPayload` types to JSON strings
+- [x] Implement `useInputChannel` hook per spec interface
+- [x] Attach `keydown` / `keyup` event listeners using `event.code` (not `event.key`)
+- [x] Implement `activateKeyboardLock()`: `requestFullscreen` then `navigator.keyboard.lock([...])`
+- [x] Implement `releaseKeyboardLock()` on StreamPage unmount
+- [x] Implement absolute mouse coordinate transform: `getAbsoluteCoordinates(event, videoEl, nativeW, nativeH)`
+- [x] Implement mouse move throttle: max 1 event per 8 ms (timestamp gate)
+- [x] Implement Pointer Lock API for relative mouse mode: `videoElement.requestPointerLock()`
+- [x] Suppress right-click context menu on video element
+- [x] Implement `MOUSE_SCROLL` from `wheel` events with `deltaX` and `deltaY`
+- [x] Implement custom CSS cursor overlay (Amber dot) over video element; hide default cursor
+- [x] Implement clipboard paste: `navigator.clipboard.readText()` → `CLIPBOARD_PASTE` payload
+- [x] Build `ControlBar.tsx` component with all command buttons per spec table
 
 ---
 
