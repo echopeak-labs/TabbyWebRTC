@@ -24,7 +24,7 @@ This file is the single source of truth for tracking the implementation status o
 | `frontend/02-auth-session.md` | `agent-frontend-auth` | `review` | BroadcastChannel auth-sync + ConnectPage QR (28s refresh); Clerk sign-in/scan/approve/agents flows; signal-client auth messages; mobile chunk 162 KB gzip (zxing); pairedAgents via unsafeMetadata; LAN probe stub; encryptedSalt sent but backend ignores |
 | `frontend/03-webrtc-client.md` | `agent-frontend-webrtc` | `review` | webrtc.ts + extended signal-client singleton; useWebRTC/useThumbnailPoller/useSourceLockListener hooks; VideoPlayer + ToastHost; agentStore inUse/thumbnail/agentBaseUrl; ConnectPage still uses per-page SignalClient (02 should migrate to singleton for persistent WS post-auth); full npm typecheck blocked by frontend/02 errors |
 | `frontend/04-input-handling.md` | `agent-frontend-input` | `review` | input-codec.ts + useInputChannel (scancode keys, 8ms mouse throttle, pointer lock, keyboard lock, amber cursor overlay) + ControlBar commands; StreamPage wiring deferred to frontend/05; `types/input.ts` still has stale modifiers:number shape from 01 |
-| `frontend/05-launchpad.md` | — | `not-started` | LaunchpadPage, DisplayCard, AppCard, StreamPage, ControlBar |
+| `frontend/05-launchpad.md` | `agent-frontend-launchpad` | `review` | LaunchpadPage + DisplayCard/AppCard + TopBar + StreamPage/StreamControlBar; useAgentSources probes local GET /sources + WS AGENT_SOURCES/REQUEST_SOURCES listener; agent switch navigates to / (JWT is agent-scoped); bitrate cap UI no-op on receive-only PC until agent-side cap wired |
 
 **Frontend Dependencies:**
 - `02` depends on `01` (app scaffold must exist)
@@ -42,11 +42,13 @@ This file is the single source of truth for tracking the implementation status o
 | `backend/02-signaling-server.md` | `agent-singal-server` | `review` | WebSocket connect/disconnect/router in `infra/lambda/src/`; agent register/heartbeat, SUBSCRIBE/UNSUBSCRIBE locks, SDP/ICE relay; `sendToConnection` with GoneException cleanup; 22 Jest tests pass; SUBSCRIBE now validates TabbyRDP JWT via backend/04 |
 | `backend/03-aws-infra.md` | `agent-aws-infra` | `review` | WebSocket + REST APIs wired in CDK; 4 Lambda stubs for bundling; `cdk synth` OK for dev/prod; `cdk diff`/`deploy` blocked until AWS credentials configured |
 | `backend/04-auth-service.md` | `agent-auth-service` | `review` | Clerk JWKS + TabbyRDP/agent JWT via `jose`; QR `SESSION_PENDING`/`REFRESH_SESSION`; `POST /auth/approve`, `POST /agents/pair`, `GET /agents`, `GET /turn-credentials`; agents table TTL added; 22 Jest tests pass; E2E dev deploy blocked until AWS credentials configured; agent WebSocket auth uses `?token=` query param (API GW v2 has no connect headers) |
+| `backend/05-update-distribution.md` | | `not-started` | R2-backed update API: `GET /updates/manifest.json`, `GET /downloads/{platform}`; dev/prod stacks read separate R2 prefixes |
 
 **Backend Dependencies:**
 - `02` depends on `01` (tables must be defined)
 - `03` depends on `01` + `02` (all constructs assembled into stack)
 - `04` depends on `01` + `03` (needs tables and API endpoints)
+- `05` depends on `03` (REST API scaffold must exist)
 
 ---
 
@@ -56,10 +58,12 @@ This file is the single source of truth for tracking the implementation status o
 |---|---|---|---|
 | `cicd/01-pipeline.md` | `agent-cicd-pipeline` | `review` | Four workflows in `.github/workflows/`; `cdk synth` + `cargo check`/`test` verified locally; PR check blocked until `frontend/` exists, `infra` adds lint/typecheck scripts, desktop-agent clippy warnings fixed; GitHub secrets + workflow E2E tests require human setup |
 | `cicd/02-scripts.md` | `agent-cicd-scripting` | `review` | 10 scripts in `scripts/` + README + env.local.json.example; deploy-dev/prod added per spec inventory; full setup-dev blocked until frontend/01 scaffolds `frontend/` and `.env.example` |
+| `cicd/03-agent-release-distribution.md` | | `not-started` | Native installers (.deb/.msi/.pkg), R2 publish, manifest generation, root README dev download links |
 
 **CI/CD Dependencies:**
 - `01-pipeline.md` depends on frontend, backend, and desktop-agent builds existing
 - `02-scripts.md` depends on `01-pipeline.md` (references workflow secrets)
+- `03-agent-release-distribution.md` depends on `01-pipeline.md` + `backend/05` (manifest schema and download endpoint contract)
 
 ---
 
@@ -71,11 +75,13 @@ This file is the single source of truth for tracking the implementation status o
 | `desktop-agent/02-display-capture.md` | `agent-desktop-02` | `review` | Capturable trait, scap-backed platform capture (PipeWire/WGC/SCK), openh264 encoder + FU-A RTP packetizer, CaptureLoop; enable `scap-capture` feature + PipeWire for real display capture; hardware encode behind `hardware-encode`; Linux minimize hook stubbed |
 | `desktop-agent/03-input-injection.md` | `agent-desktop-04` | `review` | InputInjector + uinput/SendInput/CGEvent impls, run_input_handler with keyboard FIFO (16) and latest-wins mouse moves; Linux tests pass when /dev/uinput accessible (input group); Windows SendSAS requires sas.dll + elevation; macOS CtrlAltDel maps to Ctrl+Cmd+Q |
 | `desktop-agent/04-webrtc-server.md` | `agent-desktop-05` | `review` | Verified 2026-06-25: webrtc-rs v0.17.1; StreamRegistry + PeerCoordinator + SignalingClient match spec; `cargo build -p webrtc_peer` OK; STUN wired, TURN struct ready but agent passes `None` (blocked on backend/04 `GET /turn-credentials`); browser E2E integration test still pending |
+| `desktop-agent/05-auto-update.md` | | `not-started` | Background UpdateLoop: 2–4 h random poll, SHA-256 verify, silent native install, restart when idle |
 
 **Desktop Agent Dependencies:**
 - `02` depends on `01` (workspace and Capturable trait scaffold)
 - `03` depends on `01` (InputInjector trait scaffold)
 - `04` depends on `01`, `02`, `03` (integrates all sub-systems)
+- `05` depends on `01` + `backend/05` (manifest contract); E2E blocked until `cicd/03` publishes first release
 
 ---
 
@@ -96,6 +102,13 @@ frontend/01 ──► frontend/02
             ──► frontend/05
 
 cicd/01 ──► (requires all three domains to have buildable code)
+
+backend/03 ──► backend/05
+cicd/01 ──► cicd/03
+backend/05 ──► cicd/03
+backend/05 ──► desktop-agent/05
+cicd/03 ──► desktop-agent/05
+desktop-agent/01 ──► desktop-agent/05
 ```
 
 **Recommended implementation order:**
@@ -105,6 +118,7 @@ cicd/01 ──► (requires all three domains to have buildable code)
 4. `frontend/02` + `frontend/03`
 5. `frontend/04` + `frontend/05`
 6. `cicd/01` + `cicd/02`
+7. `backend/05` + `cicd/03` (parallel), then `desktop-agent/05`
 
 ---
 
@@ -135,6 +149,9 @@ Human reviews change `review` → `done`.
 | 3 | Linux capture: confirm PipeWire portal works headless (no DE) | `desktop-agent/02` | Before Linux capture impl |
 | 4 | Windows agent signing cert for `SendInput` with UAC-elevated apps | `desktop-agent/03` | Before Windows input impl |
 | 5 | `scap` crate maturity evaluation — may need to use raw OS APIs directly | `desktop-agent/02` | Before capture impl |
+| 6 | Windows Authenticode signing for MSI (SmartScreen) | `cicd/03`, `desktop-agent/05` | Before prod user-facing release |
+| 7 | macOS notarization for `.pkg` | `cicd/03`, `desktop-agent/05` | Before prod user-facing release |
+| 8 | Linux auto-update requires root/system install via `.deb` | `desktop-agent/05` | Before auto-update E2E |
 
 ---
 
@@ -160,6 +177,7 @@ Only start specs in the same wave when all dependencies from prior waves are `do
 | 4 | `frontend/02` then `frontend/03` | Sequential — both edit `signal-client.ts` |
 | 5 | `frontend/04` then `frontend/05` | `04` depends on `useWebRTC` from `03` |
 | 6 | `cicd/01` + `cicd/02` | `.github/workflows/` vs `scripts/` |
+| 7 | `backend/05` + `cicd/03`, then `desktop-agent/05` | `infra/lambda/` + R2 API vs `desktop-agent/packaging/` + README vs `desktop-agent/agent/` updater |
 
 Within a wave, do not start a spec whose dependencies are still `not-started` or `in-progress`.
 
@@ -185,12 +203,15 @@ Within a wave, do not start a spec whose dependencies are still `not-started` or
 | `backend/02` | `infra/lambda/src/` (except handlers wired only in `03`) |
 | `backend/03` | `infra/lib/tabbyrdp-stack.ts`, `infra/lib/constructs/websocket-api.ts`, `infra/lib/constructs/lambda-functions.ts` |
 | `backend/04` | `infra/lambda/src/handlers/auth.ts`, `infra/lambda/src/handlers/turn.ts`, `infra/lambda/src/handlers/agent.ts` |
+| `backend/05` | `infra/lib/tabbyrdp-stack.ts`, `infra/lib/constructs/lambda-functions.ts`, `infra/lambda/src/handlers/updates.ts`, `infra/lambda/src/lib/r2.ts` |
 | `desktop-agent/01` | `desktop-agent/agent/`, `desktop-agent/Cargo.toml` |
 | `desktop-agent/02` | `desktop-agent/capture/` |
 | `desktop-agent/03` | `desktop-agent/input/` |
 | `desktop-agent/04` | `desktop-agent/webrtc_peer/`, `desktop-agent/signaling/` |
+| `desktop-agent/05` | `desktop-agent/agent/src/updater.rs`, `desktop-agent/agent/src/config.rs`, `desktop-agent/agent/src/agent.rs`, `desktop-agent/agent/Cargo.toml` |
 | `cicd/01` | `.github/workflows/` |
 | `cicd/02` | `scripts/` |
+| `cicd/03` | `.github/workflows/desktop-agent.yml`, `scripts/publish-agent-release.sh`, `README.md`, `desktop-agent/packaging/` |
 
 Agents must not edit paths outside their spec's allowed list unless explicitly merging integration work in wave order.
 

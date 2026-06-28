@@ -101,20 +101,20 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## frontend/05-launchpad.md
 
-- [ ] Build `LaunchpadPage.tsx` with two-column layout (displays left, apps right)
-- [ ] Build `DisplayCard.tsx` with all visual states: available, in-use, offline, selected
-- [ ] Build `AppCard.tsx` as horizontal list item with thumbnail + name
-- [ ] Implement responsive collapse: two columns → single column stacked on < 768 px
-- [ ] Fetch agent's display + app list from signaling on launchpad mount; populate `agentStore`
-- [ ] Build `StreamPage.tsx`: full-viewport video, ControlBar auto-hide after 3 s
-- [ ] Implement ControlBar visibility: auto-hide on no mouse movement, show on `mousemove` or `Ctrl+Shift+C`
-- [ ] Implement confirm dialogs for Restart and Shutdown commands (dismissible with Escape)
-- [ ] Build `TopBar.tsx`: agent selector dropdown, connection badge (LAN/WAN), latency display, avatar menu
-- [ ] Implement latency readout: poll `getStats()` every 2 s for `currentRoundTripTime`
-- [ ] Implement connection badge: LAN (green) if host/srflx ICE pair, WAN (amber) if relay
-- [ ] Implement agent switcher: on selection, clear stream state and reload launchpad
-- [ ] Implement Sign Out: `authStore.clearSession()` + clear sessionStorage + navigate to `/`
-- [ ] Implement F11 → `requestFullscreen` + Keyboard Lock on StreamPage
+- [x] Build `LaunchpadPage.tsx` with two-column layout (displays left, apps right)
+- [x] Build `DisplayCard.tsx` with all visual states: available, in-use, offline, selected
+- [x] Build `AppCard.tsx` as horizontal list item with thumbnail + name
+- [x] Implement responsive collapse: two columns → single column stacked on < 768 px
+- [x] Fetch agent's display + app list from signaling on launchpad mount; populate `agentStore`
+- [x] Build `StreamPage.tsx`: full-viewport video, ControlBar auto-hide after 3 s
+- [x] Implement ControlBar visibility: auto-hide on no mouse movement, show on `mousemove` or `Ctrl+Shift+C`
+- [x] Implement confirm dialogs for Restart and Shutdown commands (dismissible with Escape)
+- [x] Build `TopBar.tsx`: agent selector dropdown, connection badge (LAN/WAN), latency display, avatar menu
+- [x] Implement latency readout: poll `getStats()` every 2 s for `currentRoundTripTime`
+- [x] Implement connection badge: LAN (green) if host/srflx ICE pair, WAN (amber) if relay
+- [x] Implement agent switcher: on selection, clear stream state and reload launchpad
+- [x] Implement Sign Out: `authStore.clearSession()` + clear sessionStorage + navigate to `/`
+- [x] Implement F11 → `requestFullscreen` + Keyboard Lock on StreamPage
 
 ---
 
@@ -268,3 +268,57 @@ Use `[ ]` / `[x]` to track individual task completion.
 - [x] Implement full teardown on `NOTIFY_UNSUBSCRIBE`: close PeerConnection, update StreamRegistry
 - [x] Re-send `AGENT_REGISTER` on signaling WebSocket reconnect to restore server-side state
 - [ ] Integration test: connect a real browser tab to the agent, stream a display, verify video and input both work
+
+---
+
+## backend/05-update-distribution.md
+
+- [ ] Define manifest JSON schema and platform key enum in `infra/lambda/src/lib/manifest.ts`
+- [ ] Implement R2 S3 client helper with streaming get in `infra/lambda/src/lib/r2.ts`
+- [ ] Implement manifest handler: read `{env}/manifest.json` from R2, return JSON with cache headers
+- [ ] Implement download proxy handler: resolve platform from manifest, stream artifact from R2
+- [ ] Wire `GET /updates/manifest.json` and `GET /downloads/{platform}` routes in `infra/lib/tabbyrdp-stack.ts`
+- [ ] Add `updatesFn` Lambda to `infra/lib/constructs/lambda-functions.ts` with R2 env vars
+- [ ] Pass `UPDATE_ENV_PREFIX` from CDK `envName` prop into updates Lambda
+- [ ] Add CDK outputs: `UpdateManifestUrl`, `DownloadBaseUrl`
+- [ ] Unit tests: manifest parsing, platform resolution, 404 for unknown platform
+- [ ] Document required deploy-time secrets (R2 credentials) in spec
+- [ ] Verify `cdk synth --context env=dev` and `cdk synth --context env=prod` complete without errors
+
+---
+
+## cicd/03-agent-release-distribution.md
+
+- [ ] Create `desktop-agent/packaging/deb/` with nfpm config, systemd unit, and postinstall script
+- [ ] Create `desktop-agent/packaging/wix/` with WiX source for Windows MSI
+- [ ] Create `desktop-agent/packaging/macos/build-pkg.sh` for macOS `.pkg` builds
+- [ ] Create `desktop-agent/packaging/build.sh` dispatcher invoked per matrix target
+- [ ] Extend `desktop-agent.yml` release workflow: package step after `cargo build --release`
+- [ ] Add SHA-256 computation step per installer artifact
+- [ ] Add publish job: generate `manifest.json` from build outputs
+- [ ] Add R2 upload step with env prefix (`dev` on main, `prod` on `v*` tag)
+- [ ] Upload manifest to `{env}/manifest.json` and artifacts to `{env}/{version}/`
+- [ ] Add R2 secrets to GitHub Secrets reference (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ACCOUNT_ID`, `DEV_REST_URL`)
+- [ ] Create `scripts/publish-agent-release.sh` mirroring CI publish steps
+- [ ] Create root `README.md` with dev download link table (stub `REPLACE_DEV_REST_URL` placeholders)
+- [ ] Verify tag release produces 5 installers + manifest in R2 `prod/` prefix
+- [ ] Verify README dev links download correct artifact via API Gateway after deploy
+
+---
+
+## desktop-agent/05-auto-update.md
+
+- [ ] Add `[updates]` config section (`enabled`, `base_url`, `channel`) to `config.rs`
+- [ ] Bake default `base_url` from `TABBYRDP_UPDATE_BASE_URL` at compile time
+- [ ] Implement `platform_key()` runtime detection mapping OS/arch to manifest keys
+- [ ] Implement `updater.rs` with `UpdateLoop` and random 2–4 h sleep interval
+- [ ] Implement manifest fetch and semver comparison against `CARGO_PKG_VERSION`
+- [ ] Implement artifact download to OS temp directory with progress logging
+- [ ] Implement SHA-256 verification against manifest `artifacts[platform].sha256`
+- [ ] Implement idle-gating: defer update when WebRTC peer connections are active
+- [ ] Implement silent install per OS (`dpkg -i`, `msiexec /quiet`, `installer -pkg`)
+- [ ] Implement process restart after successful install (systemd/launchctl/service helper)
+- [ ] Wire `UpdateLoop` spawn in `agent.rs` after startup (skip during pairing flow)
+- [ ] Honor `updates.enabled = false` to disable all update network activity
+- [ ] Integration test with mock HTTP server serving fake manifest and artifact
+- [ ] Amend `desktop-agent/01-overview.md`: threading model, startup sequence, out-of-scope file write rule
