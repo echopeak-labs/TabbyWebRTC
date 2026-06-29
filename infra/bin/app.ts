@@ -10,11 +10,12 @@ if (envName !== 'dev' && envName !== 'prod') {
 }
 
 const stackId = envName === 'dev' ? 'TabbyRDPDev' : 'TabbyRDPProd';
+const AWS_REGION = 'us-east-1';
 
 new TabbyRdpStack(app, stackId, {
   envName,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
+    region: AWS_REGION,
   },
 });

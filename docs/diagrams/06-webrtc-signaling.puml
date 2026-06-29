@@ -1,0 +1,131 @@
+@startuml tabbyrdp-webrtc-signaling
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Helvetica
+
+title TabbyRDP — WebRTC Client / Server Communication\n<size:12>Agent is SDP offerer · Browser is answerer · Signaling relayed via AWS or LAN WS</size>
+
+participant "Browser Tab\n(useWebRTC)" as browser
+participant "Signal Client\n(WSS or LAN :7700)" as signal
+participant "AWS Lambda\nsignal-handler" as lambda
+database "source-locks" as locks
+participant "Desktop Agent\nSignalingClient" as agent_sig
+participant "PeerCoordinator\n+ StreamRegistry" as peer
+participant "CaptureLoop\nH.264 → RTP" as capture
+participant "InputHandler\ndata channel" as input
+participant "CoTURN / STUN" as ice
+
+== 0 — Pre-flight: TURN credentials ==
+
+browser -> signal : GET /turn-credentials\nAuthorization: TabbyRDP JWT
+signal -> browser : { urls, username, credential, ttl:86400 }
+browser -> browser : RTCPeerConnection config\nSTUN + dynamic TURN
+
+== 1 — Subscribe & source lock ==
+
+browser -> signal : SUBSCRIBE { sourceId, tabId }
+signal -> lambda : forward
+lambda -> locks : check sourceId
+alt already locked by another tabId
+  lambda -> signal : SOURCE_IN_USE
+  signal -> browser : gray out source
+else available
+  lambda -> locks : put { sourceId, tabId, connectionId }
+  lambda -> agent_sig : NOTIFY_SUBSCRIBER\n{ sourceId, tabId, browserConnectionId }
+end
+
+== 2 — Agent creates offer (agent-as-offerer) ==
+
+agent_sig -> peer : handle_notify_subscriber
+peer -> capture : get_or_create_track(sourceId)\nstart CaptureLoop if new
+peer -> peer : create PeerConnection\nadd H.264 Baseline track
+peer -> peer : create data channel "input_stream"\n(unordered, maxRetransmits:0)
+peer -> input : wire on_message → inject
+peer -> peer : createOffer() → setLocalDescription
+peer -> agent_sig : SDP_OFFER { sourceId, sdp, targetConnectionId }
+agent_sig -> lambda : SDP_OFFER
+lambda -> signal : relay to browser connectionId
+signal -> browser : SDP_OFFER
+
+== 3 — Browser answers ==
+
+browser -> browser : setRemoteDescription(offer)\ncreateAnswer() → setLocalDescription
+browser -> signal : SDP_ANSWER { sourceId, sdp }
+signal -> lambda : forward
+lambda -> agent_sig : SDP_ANSWER
+agent_sig -> peer : setRemoteDescription(answer)
+
+== 4 — Trickle ICE (bidirectional relay) ==
+
+loop until connected or failed
+  browser -> browser : onicecandidate
+  browser -> signal : ICE_CANDIDATE
+  signal -> lambda : forward
+  lambda -> agent_sig : relay
+  agent_sig -> peer : addIceCandidate
+
+  peer -> agent_sig : onicecandidate
+  agent_sig -> lambda : ICE_CANDIDATE
+  lambda -> signal : relay
+  signal -> browser : ICE_CANDIDATE
+end
+
+peer <--> ice : STUN binding / TURN allocate
+browser <--> ice : STUN binding / TURN allocate
+
+== 5 — P2P media & input (no AWS) ==
+
+browser <-->> peer : **DTLS-SRTP**\nH.264 video track
+note over browser, capture
+  AWS carries **zero** video bytes.
+  Encoder: NVENC → VAAPI → VideoToolbox → openh264
+  RTP FU-A packetization on agent side
+end note
+
+browser -> peer : input_stream DC\nKEY_DOWN, MOUSE_MOVE, CLIPBOARD_PASTE, ...
+peer -> input : deserialize InputPayload → OS inject
+
+browser -> browser : ontrack → VideoPlayer\nobject-fit: contain + mouse calibration
+
+== 6 — Connection monitoring ==
+
+browser -> browser : getStats() every 2s → RTT badge
+browser -> browser : ICE pair type → LAN (host/srflx) or WAN (relay) badge
+
+alt ICE failure (up to 3 retries, exponential backoff)
+  browser -> browser : toast + retry SUBSCRIBE
+end
+
+== 7 — Teardown ==
+
+browser -> signal : UNSUBSCRIBE { sourceId, tabId }
+signal -> lambda : forward
+lambda -> locks : delete sourceId
+lambda -> agent_sig : NOTIFY_UNSUBSCRIBE
+agent_sig -> peer : close PeerConnection\nremove from PEER_CONNECTIONS map
+peer -> capture : subscriber_count-- → 0\ncancel CaptureLoop
+lambda -> signal : STREAM_CLOSED { sourceId }
+signal -> browser : update agentStore.inUse
+
+== Path A — LAN signaling shortcut ==
+
+note over browser, agent_sig
+  After AUTH_APPROVED.localEndpoint probe succeeds:
+  signal-client opens **second** WS to agent :7700/signal
+  Same SUBSCRIBE → SDP → ICE sequence locally
+  WebRTC still P2P over LAN host candidates
+  AWS WSS may remain for session lifecycle only
+end note
+
+legend right
+  |= Role |= Responsibility |
+  | Browser | SDP answerer, input sender, video renderer |
+  | Agent | SDP offerer, encoder, input receiver |
+  | Lambda | opaque message bus + source locks |
+  | StreamRegistry | 1 encoder per source, shared across tabs* |
+
+  *Only one tab per source allowed by source-locks
+endlegend
+
+@enduml

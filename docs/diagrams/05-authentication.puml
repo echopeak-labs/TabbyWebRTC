@@ -1,0 +1,124 @@
+@startuml tabbyrdp-authentication
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Helvetica
+
+title TabbyRDP — Authentication Architecture\n<size:12>Three token types · QR ephemeral session · mobile-as-key · agent pairing</size>
+
+box "Identity Provider" #FFF3E0
+  participant "Clerk" as clerk
+end box
+
+box "Mobile Key (PWA)" #E8F5E9
+  participant "MobileSignInPage" as signin
+  participant "MobileScanPage" as scan
+  participant "MobileApprovePage" as approve
+  participant "mobileStore" as mstore
+end box
+
+box "Desktop Viewer" #E3F2FD
+  participant "ConnectPage\n(Tab 1)" as connect
+  participant "BroadcastChannel" as bc
+  participant "Other Tabs" as tabs
+  participant "ProtectedRoute\n/launchpad" as launch
+end box
+
+box "Backend (AWS)" #F3E5F5
+  participant "WSS $connect" as wsconn
+  database "pending-sessions" as pending
+  participant "POST /auth/approve" as authrest
+  database "agents" as agentsdb
+  participant "PostToConnection" as push
+end box
+
+== A — Mobile identity (persistent) ==
+
+signin -> clerk : Clerk <SignIn />\n(email / OAuth / passkey)
+clerk -> signin : Clerk session + JWT
+signin -> mstore : hydrate pairedAgents\nfrom user.publicMetadata
+note over clerk, mstore
+  **Clerk JWT** — mobile only
+  Validated server-side via JWKS (jose)
+  Never issued to desktop viewer directly
+end note
+
+== B — QR ephemeral session (desktop connect) ==
+
+connect -> wsconn : WSS connect (no auth yet)
+wsconn -> pending : put { pendingSessionId,\nconnectionId, expiresAt+30s,\nstatus:PENDING }
+wsconn -> connect : SESSION_PENDING
+connect -> connect : render QR(pendingSessionId)
+
+scan -> scan : camera decode QR JSON
+scan -> approve : pendingScanPayload stored
+approve -> clerk : getToken() after Face ID / WebAuthn
+approve -> mstore : lookup agent publicKey
+approve -> authrest : POST /auth/approve\nBearer Clerk JWT\n{ pendingSessionId, agentId,\nencryptedSalt, localEndpoint? }
+
+authrest -> clerk : verify JWT (JWKS)
+authrest -> pending : get + delete (single-use)
+authrest -> agentsdb : verify agentId ∈ userId
+authrest -> authrest : Sign TabbyRDP JWT (HS256, 8h)\n{ sub:userId, agentId, iss:tabbyrdp }
+authrest -> push : AUTH_APPROVED → connectionId
+push -> connect : { token, agentId, localEndpoint? }
+connect -> connect : sessionStorage ← token
+connect -> launch : navigate /launchpad
+
+note over connect, launch
+  **TabbyRDP JWT** — desktop streaming session
+  Required for SUBSCRIBE, turn-credentials, LAN WS
+  MUST NOT use localStorage or cookies
+end note
+
+== C — Multi-tab token sync (desktop only) ==
+
+tabs -> bc : REQUEST_AUTH_TOKEN
+bc -> connect : (authenticated tab hears)
+connect -> bc : PROVIDE_AUTH_TOKEN { token, agentId }
+bc -> tabs : within 150ms timeout
+tabs -> launch : skip ConnectPage
+
+== D — Agent pairing (one-time) ==
+
+participant "Desktop Agent\n(first run)" as dagent
+participant "POST /agents/pair" as pairrest
+
+dagent -> dagent : generate Ed25519 keypair\nstore private key in OS keychain
+dagent -> dagent : display PAIR QR\n{ type:PAIR, agentId, publicKey }
+scan -> scan : mode=pair → decode PAIR QR
+scan -> pairrest : POST /agents/pair\nBearer Clerk JWT\n{ agentId, publicKey, name, platform }
+pairrest -> clerk : verify JWT
+pairrest -> agentsdb : store agent record
+pairrest -> pairrest : issue **Agent JWT** (HS256, 1 year)
+pairrest -> mstore : return agent metadata
+mstore -> clerk : sync pairedAgents metadata
+dagent -> dagent : poll / receive agent JWT\n→ OS keychain
+
+note over dagent, pairrest
+  **Agent JWT** — desktop agent only
+  Sent as ?token= on WSS connect
+  (API GW v2 has no connect headers)
+end note
+
+== E — Token validation matrix ==
+
+note over clerk, agentsdb
+  **Validation surfaces**
+
+  | Operation | Token required |
+  | POST /auth/approve | Clerk JWT |
+  | POST /agents/pair | Clerk JWT |
+  | GET /agents | Clerk JWT |
+  | WSS SUBSCRIBE / SDP / ICE | TabbyRDP JWT |
+  | GET /turn-credentials | TabbyRDP JWT |
+  | Agent WSS connect | Agent JWT |
+  | LAN WS /signal | TabbyRDP JWT or X-Local-Token (60s HMAC) |
+
+  **Security rules**
+  • pendingSessionId deleted on first approve
+  • Mobile never receives TabbyRDP streaming token
+  • WebRTC media encrypted via DTLS-SRTP
+end note
+
+@enduml

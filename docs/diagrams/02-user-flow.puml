@@ -1,0 +1,117 @@
+@startuml tabbyrdp-user-flow
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Helvetica
+
+title TabbyRDP — End-to-End User Flow\n<size:12>Desktop viewer tabs, mobile auth key, launchpad, and streaming</size>
+
+actor "User" as user
+participant "Desktop Tab 1\n(ConnectPage)" as tab1
+participant "Desktop Tab 2\n(new tab)" as tab2
+participant "BroadcastChannel\nauth_sync" as bc
+participant "Mobile PWA\n(Clerk signed in)" as mobile
+participant "AWS WSS\nSignaling" as aws
+participant "REST API\n/auth/approve" as rest
+participant "Desktop Agent\n(:7700 + AWS)" as agent
+participant "Launchpad / Stream\n(desktop tabs)" as ui
+
+== Phase 1 — First desktop tab: connect ==
+
+user -> tab1 : open app.tabbyrdp.com
+tab1 -> tab1 : useDeviceType() → desktop-viewer
+tab1 -> bc : initAuthSync()\nREQUEST_AUTH_TOKEN
+bc --> tab1 : (no response in 150ms)
+tab1 -> aws : WSS connect
+aws -> tab1 : SESSION_PENDING\n{ pendingSessionId, expiresIn: 30 }
+tab1 -> user : render QR code\n(28s countdown ring)
+
+loop every 28s until approved
+  tab1 -> aws : REFRESH_SESSION
+  aws -> tab1 : SESSION_PENDING (new id)
+end
+
+== Phase 2 — Mobile approves session ==
+
+user -> mobile : open /scan, point camera at QR
+mobile -> mobile : decode { pendingSessionId, signalingUrl, version }
+mobile -> user : MobileApprovePage\n"Approve with Face ID"
+user -> mobile : biometric confirm
+mobile -> mobile : encrypt 32-byte salt\nwith agent Ed25519 pubkey
+opt same LAN as agent
+  mobile -> agent : GET /info (probe)
+  mobile -> mobile : attach localEndpoint\n{ url, localToken }
+end
+mobile -> rest : POST /auth/approve\nAuthorization: Clerk JWT\n{ pendingSessionId, agentId, encryptedSalt, localEndpoint? }
+rest -> rest : verify Clerk JWT\nconsume pendingSessionId (single-use)\nissue TabbyRDP JWT (8h)
+rest -> aws : PostToConnection → tab1
+aws -> tab1 : AUTH_APPROVED\n{ token, agentId, localEndpoint? }
+tab1 -> tab1 : sessionStorage ← token, agentId\nauthStore updated
+tab1 -> ui : navigate /launchpad
+
+== Phase 3 — Second desktop tab: token clone ==
+
+user -> tab2 : open new tab
+tab2 -> bc : initAuthSync()\nREQUEST_AUTH_TOKEN
+bc -> tab1 : (existing tab hears request)
+tab1 -> bc : PROVIDE_AUTH_TOKEN\n{ token, agentId }
+bc -> tab2 : token within 150ms
+tab2 -> tab2 : sessionStorage ← token, agentId
+tab2 -> ui : skip ConnectPage → /launchpad
+
+== Phase 4 — Launchpad: pick a source ==
+
+ui -> aws : WSS (authenticated)\nrequest agent sources
+aws -> agent : forward AGENT_SOURCES / REQUEST_SOURCES
+agent -> aws : display + app list
+aws -> ui : populate agentStore
+ui -> user : DisplayCard thumbnails\n(refreshed every 5 min)
+user -> ui : click Display #1
+
+ui -> ui : check inUse flag\n(grayed if another tab holds lock)
+
+== Phase 5 — Stream in Tab 1 (source locking) ==
+
+ui -> aws : SUBSCRIBE { sourceId, tabId }
+aws -> aws : claim source_locks[sourceId]
+aws -> agent : NOTIFY_SUBSCRIBER
+note over ui, agent
+  WebRTC handshake — see 06-webrtc-signaling.puml
+  Path A (LAN) if localEndpoint probe succeeds
+  Path B (WAN) otherwise
+end note
+ui -> user : StreamPage\nvideo + ControlBar + input
+
+== Phase 6 — Tab 2 tries same display ==
+
+user -> tab2 : select Display #1
+tab2 -> aws : SUBSCRIBE { sourceId, tabId₂ }
+aws -> tab2 : SOURCE_IN_USE { sourceId, tabId₁ }
+tab2 -> user : DisplayCard shows "in use"\noffer to focus other tab
+
+== Phase 7 — Teardown ==
+
+user -> ui : close stream tab / navigate away
+ui -> aws : UNSUBSCRIBE { sourceId, tabId }
+aws -> aws : delete source_locks entry
+aws -> agent : NOTIFY_UNSUBSCRIBE
+aws -> ui : STREAM_CLOSED (all tabs on agent)\nupdate inUse state
+
+== Optional — Agent pairing (first run) ==
+
+user -> agent : first run, no JWT in keychain
+agent -> user : display PAIR QR\n{ type: PAIR, agentId, publicKey }
+user -> mobile : /scan?mode=pair
+mobile -> rest : POST /agents/pair (Clerk JWT)
+rest -> mobile : agent record stored
+mobile -> mobile : pairedAgents + Clerk metadata
+agent -> agent : receive agent JWT → OS keychain
+
+legend right
+  | Role | Auth credential | Storage |
+  | Desktop viewer | TabbyRDP JWT | sessionStorage |
+  | Mobile key | Clerk JWT | Clerk SDK |
+  | Desktop agent | Agent JWT | OS keychain |
+endlegend
+
+@enduml

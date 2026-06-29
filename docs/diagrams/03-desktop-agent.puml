@@ -1,0 +1,137 @@
+@startuml tabbyrdp-desktop-agent
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+
+title TabbyRDP Desktop Agent — Internal Architecture\n<size:12><i>Rust workspace: agent · capture · input · webrtc_peer · signaling</i></size>
+
+package "OS Layer" #EEEEEE {
+  component "Displays & Windows" as os_display
+  component "/dev/uinput\nSendInput\nCGEventPost" as os_input
+  component "OS Keychain" as keychain
+  component "mDNS\n_tabbyrdp._tcp" as mdns
+}
+
+package "agent crate (binary)" #E3F2FD {
+  component "main.rs\n(CLI: clap)" as main
+  component "config.rs\n(~/.config/tabbyrdp/agent.toml)" as config
+  component "agent.rs\nAgent run loop" as agent_loop
+  component "pairing.rs\nEd25519 first-run" as pairing
+  component "source_enumerator.rs\n30s poll" as enumerator
+  component "ThumbnailServer\n(axum :7700)" as local_server
+}
+
+package "signaling crate" #FFF8E1 {
+  component "SignalingClient\n(tokio-tungstenite)" as sig_client {
+    [AWS WSS connect]
+    [auto-reconnect + backoff]
+    [AGENT_REGISTER on reconnect]
+  }
+  component "messages.rs\nserde types" as sig_msgs
+}
+
+package "webrtc_peer crate" #F3E5F5 {
+  component "StreamRegistry\n1 encoder per sourceId" as registry
+  component "PeerCoordinator\nDashMap<tabId, PC>" as peers
+  component "peer.rs\nSDP offerer (H.264 Baseline)" as peer_mgr
+  component "config.rs\nICE servers (STUN/TURN)" as ice_cfg
+}
+
+package "capture crate" #E8F5E9 {
+  component "Capturable trait" as capturable
+  component "linux.rs\nPipeWire portal" as cap_linux
+  component "windows.rs\nDXGI / WGC" as cap_win
+  component "macos.rs\nScreenCaptureKit" as cap_mac
+  component "CaptureLoop\nspawn_blocking → encode → RTP" as cap_loop
+  component "thumbnail.rs\n320×180 JPEG q60" as thumb
+  component "rtp.rs\nH.264 FU-A packetizer" as rtp
+  component "Encoder chain\nNVENC→VAAPI→VT→openh264" as encoder
+}
+
+package "input crate" #FFEBEE {
+  component "InputInjector trait" as injector_trait
+  component "run_input_handler\ndata channel → dispatch" as input_handler
+  component "payload.rs\nInputPayload serde" as payloads
+  component "linux / windows / macos\ninjectors" as injectors
+  component "execute_command\nCtrlAltDel, Sleep, etc." as commands
+}
+
+cloud "AWS API GW\nWebSocket" as aws_ws
+cloud "CoTURN / STUN" as turn
+actor "Browser Tab" as browser
+
+main --> config : load TOML
+main --> keychain : load agent JWT
+main --> agent_loop : spawn runtime
+
+pairing --> keychain : store Ed25519 + agent JWT
+enumerator --> os_display : poll displays/apps
+enumerator --> agent_loop : delta via mpsc
+
+local_server --> thumb : GET /thumbnail/:id
+local_server --> os_display : GET /sources
+local_server --> sig_msgs : WS /signal (LAN path)
+local_server --> mdns : advertise :7700
+
+sig_client --> aws_ws : persistent WSS\n?token=agentJwt
+sig_client --> agent_loop : inbound messages
+agent_loop --> sig_client : AGENT_HEARTBEAT (9 min)
+
+agent_loop --> registry : NOTIFY_SUBSCRIBER
+registry --> capturable
+capturable --> cap_linux
+capturable --> cap_win
+capturable --> cap_mac
+cap_loop --> encoder
+encoder --> rtp
+rtp --> peer_mgr
+
+peer_mgr --> peers : create PC per tabId
+peer_mgr --> browser : SDP_OFFER via signaling
+peer_mgr --> ice_cfg
+ice_cfg --> turn
+
+peer_mgr --> input_handler : create "input_stream" DC
+input_handler --> payloads
+input_handler --> injectors
+injectors --> os_input
+input_handler --> commands
+
+browser <--> peer_mgr : **P2P WebRTC**\nH.264 + input DC
+
+note right of registry
+  **StreamRegistry**
+  get_or_create_track(sourceId)
+  subscriber_count → 0
+  → cancel CaptureLoop
+end note
+
+note bottom of agent_loop
+  **Tokio multi-thread runtime**
+  ├── SignalingClient task
+  ├── HeartbeatLoop task
+  ├── LocalServer task (:7700)
+  ├── SourceEnumerator task
+  └── per subscription:
+        PeerManager + CaptureLoop + InputHandler
+end note
+
+note left of local_server
+  **LAN path (Path A)**
+  GET /info → metadata + HMAC localToken
+  WS /signal → local SDP/ICE relay
+  Requires TabbyRDP JWT or X-Local-Token
+end note
+
+legend right
+  | Startup step | Action |
+  | 1 | Parse CLI, load config |
+  | 2 | Load JWT from keychain (or pairing) |
+  | 3 | Start LocalServer :7700 + mDNS |
+  | 4 | Connect AWS WSS, AGENT_REGISTER |
+  | 5 | HeartbeatLoop + event loop |
+endlegend
+
+@enduml

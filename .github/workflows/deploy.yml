@@ -1,0 +1,147 @@
+name: Deploy
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - 'infra/**'
+      - 'frontend/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      stage: ${{ steps.env.outputs.stage }}
+      stack_name: ${{ steps.env.outputs.stack_name }}
+      dns_name: ${{ steps.env.outputs.dns_name }}
+    steps:
+      - name: Resolve environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "stage=prod" >> "$GITHUB_OUTPUT"
+            echo "stack_name=TabbyRDPProd" >> "$GITHUB_OUTPUT"
+            echo "dns_name=tabbyrdp" >> "$GITHUB_OUTPUT"
+          else
+            echo "stage=dev" >> "$GITHUB_OUTPUT"
+            echo "stack_name=TabbyRDPDev" >> "$GITHUB_OUTPUT"
+            echo "dns_name=dev-tabbyrdp" >> "$GITHUB_OUTPUT"
+          fi
+
+  infra:
+    needs: resolve-env
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_bucket: ${{ steps.cdk.outputs.frontend_bucket }}
+      frontend_dist_id: ${{ steps.cdk.outputs.frontend_dist_id }}
+      frontend_cf_domain: ${{ steps.cdk.outputs.frontend_cf_domain }}
+      ws_url: ${{ steps.cdk.outputs.ws_url }}
+      rest_url: ${{ steps.cdk.outputs.rest_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: CDK deploy
+        working-directory: infra
+        env:
+          CLERK_JWKS_URL: ${{ secrets.CLERK_JWKS_URL }}
+          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
+          TURN_SECRET: ${{ secrets.TURN_SECRET }}
+          TURN_URLS: ${{ secrets.TURN_URLS }}
+          TABBYRDP_JWT_SECRET: ${{ secrets.TABBYRDP_JWT_SECRET }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ACM_CERTIFICATE_ARN: ${{ secrets.ACM_CERTIFICATE_ARN }}
+        run: |
+          npm ci
+          npx cdk deploy ${{ needs.resolve-env.outputs.stack_name }} \
+            --require-approval never \
+            --context env=${{ needs.resolve-env.outputs.stage }} \
+            --outputs-file cdk-outputs.json
+
+      - name: Extract stack outputs
+        id: cdk
+        working-directory: infra
+        run: |
+          STACK="${{ needs.resolve-env.outputs.stack_name }}"
+          echo "frontend_bucket=$(jq -r --arg s "$STACK" '.[$s].FrontendBucketName' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "frontend_dist_id=$(jq -r --arg s "$STACK" '.[$s].FrontendDistributionId' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "frontend_cf_domain=$(jq -r --arg s "$STACK" '.[$s].FrontendDistributionDomain' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "ws_url=$(jq -r --arg s "$STACK" '.[$s].WsEndpoint' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "rest_url=$(jq -r --arg s "$STACK" '.[$s].RestEndpoint' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload CDK outputs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdk-outputs
+          path: infra/cdk-outputs.json
+
+  dns:
+    needs: [resolve-env, infra]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Cloudflare DNS
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          ROOT_DOMAIN: mikewheeler.dev
+          TABBYRDP_DNS_NAME: ${{ needs.resolve-env.outputs.dns_name }}
+          TABBYRDP_CF_DOMAIN: ${{ needs.infra.outputs.frontend_cf_domain }}
+        run: bash scripts/update-cloudflare-dns.sh
+
+  frontend:
+    needs: [resolve-env, infra, dns]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_WS_URL: ${{ needs.infra.outputs.ws_url }}
+          VITE_REST_URL: ${{ needs.infra.outputs.rest_url }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy frontend to S3 and invalidate CloudFront
+        run: |
+          BUCKET="${{ needs.infra.outputs.frontend_bucket }}"
+          DIST="${{ needs.infra.outputs.frontend_dist_id }}"
+          aws s3 sync frontend/dist/ "s3://${BUCKET}/" --delete
+          aws cloudfront create-invalidation --distribution-id "$DIST" --paths "/*"

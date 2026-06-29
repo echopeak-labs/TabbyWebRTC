@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoDBTableManagement",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTable",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:UpdateTimeToLive",
+        "dynamodb:DescribeContinuousBackups",
+        "dynamodb:UpdateContinuousBackups",
+        "dynamodb:ListTagsOfResource",
+        "dynamodb:TagResource",
+        "dynamodb:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-prod",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-pending-sessions-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-pending-sessions-prod",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-prod",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-source-locks-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-source-locks-prod"
+      ]
+    },
+    {
+      "Sid": "DynamoDBGSIManagement",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:UpdateTable",
+        "dynamodb:DescribeTable"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-dev/index/*",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-prod/index/*",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-dev/index/*",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-prod/index/*"
+      ]
+    }
+  ]
+}

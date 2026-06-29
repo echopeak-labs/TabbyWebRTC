@@ -10,6 +10,7 @@
     "setup": "bash scripts/setup-dev.sh",
     "dev:frontend": "bash scripts/dev-frontend.sh",
     "dev:backend": "bash scripts/dev-backend.sh",
+    "dev:local": "bash scripts/dev-local.sh",
     "build": "npm run build:frontend && npm run build:infra && npm run build:agent",
     "build:frontend": "npm run build --prefix frontend",
     "build:infra": "npm run build --prefix infra",
@@ -25,7 +26,13 @@
     "cdk:synth:prod": "npm run cdk --prefix infra -- synth --context env=prod",
     "cdk:deploy:dev": "bash scripts/deploy-dev.sh",
     "cdk:deploy:prod": "bash scripts/deploy-prod.sh",
+    "deploy:iam": "tsx scripts/deploy-iam.ts",
     "release:agent": "bash scripts/release.sh",
     "publish:agent": "bash scripts/publish-agent-release.sh"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-iam": "^3.1075.0",
+    "@aws-sdk/client-sts": "^3.1075.0",
+    "tsx": "^4.20.3"
   }
 }

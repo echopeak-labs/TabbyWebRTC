@@ -7,6 +7,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 import { DynamoDbTables } from './constructs/dynamodb-tables';
+import { FrontendHosting } from './constructs/frontend-hosting';
 import { IamRoles } from './constructs/iam-roles';
 import { LambdaFunctions } from './constructs/lambda-functions';
 import { WebSocketApiConstruct } from './constructs/websocket-api';
@@ -79,6 +80,21 @@ export class TabbyRdpStack extends Stack {
     const platformResource = downloadsResource.addResource('{platform}');
     platformResource.addMethod('GET', new LambdaIntegration(lambdas.updatesFn), {
       authorizationType: AuthorizationType.NONE,
+    });
+
+    const frontend = new FrontendHosting(this, 'Frontend', {
+      envName: props.envName,
+    });
+
+    new CfnOutput(this, 'WebDomain', { value: frontend.webDomainName });
+    new CfnOutput(this, 'FrontendBucketName', {
+      value: frontend.bucket.bucketName,
+    });
+    new CfnOutput(this, 'FrontendDistributionId', {
+      value: frontend.distribution.distributionId,
+    });
+    new CfnOutput(this, 'FrontendDistributionDomain', {
+      value: frontend.distribution.distributionDomainName,
     });
 
     new CfnOutput(this, 'WsEndpoint', { value: wsApi.wsStage.url });

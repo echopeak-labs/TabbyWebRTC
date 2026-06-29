@@ -67,6 +67,17 @@ This file is the single source of truth for tracking the implementation status o
 
 ---
 
+## Domain: Test Server
+
+| Spec File | Owner Agent | Status | Notes |
+|---|---|---|---|
+| `test-server/01-local-server.md` | | `not-started` | NestJS server in `testServer/`; in-memory stores; auth + signaling API parity with `backend/02` + `backend/04`; LAN bind via `0.0.0.0`; orchestrated by `npm run dev:local` |
+
+**Test Server Dependencies:**
+- `01` depends on `backend/02` + `backend/04` (API contracts and handler logic must match)
+
+---
+
 ## Domain: Desktop Agent
 
 | Spec File | Owner Agent | Status | Notes |
@@ -109,6 +120,9 @@ backend/05 ──► cicd/03
 backend/05 ──► desktop-agent/05
 cicd/03 ──► desktop-agent/05
 desktop-agent/01 ──► desktop-agent/05
+
+backend/02 ──► test-server/01
+backend/04 ──► test-server/01
 ```
 
 **Recommended implementation order:**
@@ -119,6 +133,7 @@ desktop-agent/01 ──► desktop-agent/05
 5. `frontend/04` + `frontend/05`
 6. `cicd/01` + `cicd/02`
 7. `backend/05` + `cicd/03` (parallel), then `desktop-agent/05`
+8. `test-server/01` (after `backend/02` + `backend/04` are `review` or `done` — reuses handler contracts)
 
 ---
 
@@ -178,6 +193,7 @@ Only start specs in the same wave when all dependencies from prior waves are `do
 | 5 | `frontend/04` then `frontend/05` | `04` depends on `useWebRTC` from `03` |
 | 6 | `cicd/01` + `cicd/02` | `.github/workflows/` vs `scripts/` |
 | 7 | `backend/05` + `cicd/03`, then `desktop-agent/05` | `infra/lambda/` + R2 API vs `desktop-agent/packaging/` + README vs `desktop-agent/agent/` updater |
+| 8 | `test-server/01` | `testServer/` + `scripts/dev-local.sh` (after `backend/02` + `backend/04` are `review`/`done`) |
 
 Within a wave, do not start a spec whose dependencies are still `not-started` or `in-progress`.
 
@@ -212,6 +228,7 @@ Within a wave, do not start a spec whose dependencies are still `not-started` or
 | `cicd/01` | `.github/workflows/` |
 | `cicd/02` | `scripts/` |
 | `cicd/03` | `.github/workflows/desktop-agent.yml`, `scripts/publish-agent-release.sh`, `README.md`, `desktop-agent/packaging/` |
+| `test-server/01` | `testServer/`, `scripts/dev-local.sh`, root `package.json` (`dev:local` script only) |
 
 Agents must not edit paths outside their spec's allowed list unless explicitly merging integration work in wave order.
 

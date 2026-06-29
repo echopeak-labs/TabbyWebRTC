@@ -1,0 +1,91 @@
+@startuml tabbyrdp-backend-infra
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam defaultFontName Helvetica
+skinparam nodeStyle rectangle
+
+title TabbyRDP — Backend & Cloud Infrastructure\n<size:12>CDK stack in infra/ · env=dev | env=prod context</size>
+
+cloud "Internet" {
+  actor "Browser\n(desktop viewer)" as browser
+  actor "Mobile PWA" as mobile
+  actor "Desktop Agent" as agent
+}
+
+node "Cloudflare" #FFF8E1 {
+  component "Cloudflare Pages\n----\nStatic React build\napp.tabbyrdp.com" as pages
+  database "Cloudflare R2\n----\nenv/manifest.json\nenv/version/installers" as r2
+}
+
+node "AWS Account" #E8EAF6 {
+
+  node "API Layer" #C5CAE9 {
+    component "API Gateway WebSocket\n----\nwss://signal.tabbyrdp.com\nRoutes: connect, disconnect, default\nIdle timeout: 10 min" as wsapi
+    component "API Gateway REST\n----\nGET /turn-credentials, /agents\nPOST /agents/pair, /auth/approve\nGET /updates/manifest.json\nGET /downloads/platform" as restapi
+  }
+
+  node "Compute" #BBDEFB {
+    component "Lambda Functions (Node 22, ARM64)\n----\nwsHandler, turnFn, agentFn\nauthFn, updatesFn" as lambdas
+  }
+
+  node "Data" #C8E6C9 {
+    database "DynamoDB (PAY_PER_REQUEST)\n----\nconnections, pending-sessions\nagents, source-locks" as ddb
+    component "Secrets Manager\n----\nTABBYRDP_JWT_SECRET\nCLERK JWKS / ISSUER\nTURN_SECRET / TURN_URLS\nR2 credentials" as secrets
+  }
+
+  component "IAM — Lambda execution role\n----\nDynamoDB read/write\nexecute-api:ManageConnections\nS3-compatible R2 access" as iam
+}
+
+node "CoTURN VPS (Hetzner/OVH)" #FFCDD2 {
+  component "CoTURN\n----\nTURN REST API credentials\nHMAC-SHA256, TTL 86400s\n~5 USD/mo shared relay" as coturn
+}
+
+browser --> pages : HTTPS assets
+mobile --> pages : HTTPS assets
+
+browser --> wsapi : WSS signaling
+agent --> wsapi : WSS signaling
+browser --> restapi : REST (JWT)
+mobile --> restapi : REST (Clerk JWT)
+agent --> restapi : REST (pairing / updates)
+
+wsapi --> lambdas : invoke
+restapi --> lambdas : invoke
+lambdas --> ddb
+lambdas --> secrets
+lambdas --> wsapi : PostToConnection
+lambdas --> r2 : S3 API (updatesFn)
+
+browser ..> coturn : TURN (if P2P blocked)
+agent ..> coturn
+
+note right of wsapi
+  **Critical constraint**
+  AWS never carries video bytes.
+  Only signaling JSON (SDP/ICE/auth).
+  Typical message < 4 KB; max 128 KB.
+end note
+
+note bottom of ddb
+  **connections** stores connectionId,
+  type (browser|agent), userId, agentId.
+  **pending-sessions** single-use QR state.
+  **source-locks** enforces 1 tab per source.
+end note
+
+note bottom of lambdas
+  **router.ts** dispatches by message type:
+  AGENT_* → agent-handler
+  SUBSCRIBE/SDP/ICE → signal-handler
+  REFRESH_SESSION → connect flow
+end note
+
+legend right
+  | Resource | Tag |
+  | All CDK | project=tabbyrdp |
+  | Stacks | TabbyRDPDev / TabbyRDPProd |
+  | Cost model | $0 at free tier for signaling |
+endlegend
+
+@enduml
