@@ -308,23 +308,23 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 ## test-server/01-local-server.md
 
-- [ ] Scaffold NestJS TypeScript project in `testServer/` with `nest-cli.json`, `tsconfig.json`, `package.json`
-- [ ] Add dependencies: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/websockets`, `@nestjs/config`, `ws`, `jose`, `uuid`
+- [x] Scaffold NestJS TypeScript project in `testServer/` with `nest-cli.json`, `tsconfig.json`, `package.json`
+- [x] Add dependencies: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/websockets`, `@nestjs/config`, `ws`, `jose`, `uuid`
 - [x] Create `testServer/.env.example` and document all required env vars
-- [ ] Implement `StorageModule` with in-memory stores for connections, pending-sessions, agents, source_locks
-- [ ] Implement pending session TTL (30 s) and `REFRESH_SESSION` rotation
-- [ ] Implement `AuthModule`: `POST /auth/approve` with Clerk JWT verification and `AUTH_APPROVED` WebSocket push
-- [ ] Implement `AgentsModule`: `POST /agents/pair`, `GET /agents`, `AGENT_REGISTER`, `AGENT_HEARTBEAT`
-- [ ] Implement `SignalingModule`: WebSocket gateway on `ws` adapter; route inbound messages per `infra/lambda/src/router.ts`
-- [ ] Implement SDP/ICE relay, `SUBSCRIBE`/`UNSUBSCRIBE` source locking, `SOURCE_IN_USE`, `STREAM_CLOSED`
-- [ ] Implement `TurnModule`: `GET /turn-credentials` with HMAC-SHA256 credentials
-- [ ] Reuse or adapt JWT helpers from `infra/lambda/src/lib/jwt.ts` (no duplicated crypto logic)
-- [ ] Bind HTTP + WebSocket to `0.0.0.0`; detect and log primary LAN IPv4 on startup
-- [ ] Enable CORS for all origins in dev
-- [ ] On browser WebSocket connect: send `SESSION_PENDING { pendingSessionId, expiresIn: 30 }`
-- [ ] On agent WebSocket disconnect: mark agent offline, notify subscribers with `AGENT_OFFLINE`
-- [ ] Write unit tests for JWT issuance, pending session expiry, and source lock contention
-- [ ] Write integration test: browser WS connect → approve → `AUTH_APPROVED` → `SUBSCRIBE` → SDP round-trip
+- [x] Implement `StorageModule` with in-memory stores for connections, pending-sessions, agents, source_locks
+- [x] Implement pending session TTL (30 s) and `REFRESH_SESSION` rotation
+- [x] Implement `AuthModule`: `POST /auth/approve` with Clerk JWT verification and `AUTH_APPROVED` WebSocket push
+- [x] Implement `AgentsModule`: `POST /agents/pair`, `GET /agents`, `AGENT_REGISTER`, `AGENT_HEARTBEAT`
+- [x] Implement `SignalingModule`: WebSocket gateway on `ws` adapter; route inbound messages per `infra/lambda/src/router.ts`
+- [x] Implement SDP/ICE relay, `SUBSCRIBE`/`UNSUBSCRIBE` source locking, `SOURCE_IN_USE`, `STREAM_CLOSED`
+- [x] Implement `TurnModule`: `GET /turn-credentials` with HMAC-SHA256 credentials
+- [x] Reuse or adapt JWT helpers from `infra/lambda/src/lib/jwt.ts` (no duplicated crypto logic)
+- [x] Bind HTTP + WebSocket to `0.0.0.0`; detect and log primary LAN IPv4 on startup
+- [x] Enable CORS for all origins in dev
+- [x] On browser WebSocket connect: send `SESSION_PENDING { pendingSessionId, expiresIn: 30 }`
+- [x] On agent WebSocket disconnect: mark agent offline, notify subscribers with `AGENT_OFFLINE`
+- [x] Write unit tests for JWT issuance, pending session expiry, and source lock contention
+- [x] Write integration test: browser WS connect → approve → `AUTH_APPROVED` → `SUBSCRIBE` → SDP round-trip
 - [x] Create `scripts/dev-local.sh`: detect LAN IP, start testServer + Vite (`--host 0.0.0.0`) + desktop agent with temp config
 - [x] Add `dev:local` script to root `package.json`
 - [ ] Manual E2E: phone on same Wi‑Fi scans QR, approves session, WebRTC stream connects

@@ -71,7 +71,7 @@ This file is the single source of truth for tracking the implementation status o
 
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
-| `test-server/01-local-server.md` | | `not-started` | NestJS server in `testServer/`; in-memory stores; auth + signaling API parity with `backend/02` + `backend/04`; LAN bind via `0.0.0.0`; orchestrated by `npm run dev:local` |
+| `test-server/01-local-server.md` | `agent-release-cicd` | `review` | NestJS `testServer/` with in-memory stores, WS gateway (`ws` adapter), REST parity (`/auth/approve`, `/agents`, `/turn-credentials`); `shared/jwt.ts` + `types.ts` copied from `infra/lambda` (spec fallback for isolated build); LAN IP logging; `dev:local` orchestration; 8 Jest tests pass; manual phone E2E pending |
 
 **Test Server Dependencies:**
 - `01` depends on `backend/02` + `backend/04` (API contracts and handler logic must match)
