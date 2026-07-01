@@ -8,34 +8,35 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: components/frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run build
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+        working-directory: .
+      - run: yarn lint
+      - run: yarn typecheck
+      - run: yarn build
 
   backend-lint:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: infra
+        working-directory: components/infra
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: infra/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+        working-directory: .
+      - run: yarn build
       - run: npx cdk synth --context env=dev --quiet
         env:
           ACM_CERTIFICATE_ARN: arn:aws:acm:us-east-1:123456789012:certificate/00000000-0000-0000-0000-000000000000
@@ -44,11 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: desktop-agent
+        working-directory: components/desktop-agent
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: components/desktop-agent
       - run: cargo check
       - run: cargo clippy -- -D warnings
       - run: cargo test

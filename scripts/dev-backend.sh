@@ -9,7 +9,7 @@ Start local WebSocket signaling via AWS SAM CLI (port 3001).
 
 Prerequisites:
   AWS SAM CLI
-  infra/env.local.json (copy from scripts/env.local.json.example)
+  components/infra/env.local.json (copy from scripts/env.local.json.example)
 
 EOF
 }
@@ -20,7 +20,7 @@ if [[ "${1:-}" == "--help" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INFRA="$ROOT/infra"
+INFRA="$ROOT/components/infra"
 
 command -v sam >/dev/null || { echo "AWS SAM CLI required"; exit 1; }
 
@@ -30,7 +30,7 @@ if [[ ! -f "$INFRA/env.local.json" ]]; then
 fi
 
 cd "$INFRA"
-npm run build
+yarn build
 
 sam local start-api \
   --template-file .aws-sam/build/template.yaml \

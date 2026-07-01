@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AGENT="$ROOT/desktop-agent"
+AGENT="$ROOT/components/desktop-agent"
 
 VERSION="$(grep '^package.version' "$AGENT/Cargo.toml" | head -1 | sed 's/.*= "\(.*\)".*/\1/')"
 ARCH="$(uname -m)"
@@ -27,7 +27,7 @@ case "$OS-$ARCH" in
     ;;
   *)
     echo "Unsupported host for local packaging: $OS-$ARCH" >&2
-    echo "Set PLATFORM_KEY and TARGET manually, then run desktop-agent/packaging/build.sh" >&2
+    echo "Set PLATFORM_KEY and TARGET manually, then run components/desktop-agent/packaging/build.sh" >&2
     exit 1
     ;;
 esac

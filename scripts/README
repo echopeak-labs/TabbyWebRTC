@@ -8,7 +8,7 @@ Run any script with `--help` for usage and prerequisites.
 
 | Tool | Used by |
 |---|---|
-| Node.js 22+ | setup-dev, dev-frontend, deploy-* |
+| Node.js 22+ / Yarn | setup-dev, dev-frontend, deploy-* |
 | Rust stable | setup-dev |
 | AWS CLI v2 | setup-dev, bootstrap-aws, deploy-*, check-costs |
 | AWS SAM CLI | dev-backend |
@@ -19,7 +19,13 @@ Run any script with `--help` for usage and prerequisites.
 ## Quick start
 
 ```bash
-./scripts/setup-dev.sh
+yarn setup
+yarn dev
+```
+
+For SAM-based backend signaling:
+
+```bash
 ./scripts/dev-backend.sh    # terminal 1
 ./scripts/dev-frontend.sh   # terminal 2 (set CLERK_PUBLISHABLE_KEY)
 ```
@@ -31,6 +37,7 @@ Run any script with `--help` for usage and prerequisites.
 | `setup-dev.sh` | One-time dev machine setup |
 | `dev-backend.sh` | SAM local API on port 3001 |
 | `dev-frontend.sh` | Vite dev server on port 5173 |
+| `dev-local.sh` | Start test server, frontend, and agent via `yarn dev` |
 | `deploy-dev.sh` | Deploy TabbyWebRTCDev CDK stack |
 | `deploy-prod.sh` | Deploy TabbyWebRTCProd (requires confirmation) |
 | `bootstrap-aws.sh` | CDK bootstrap + GitHub OIDC deploy role |
@@ -41,4 +48,4 @@ Run any script with `--help` for usage and prerequisites.
 
 ## Local backend env
 
-Copy `scripts/env.local.json.example` to `infra/env.local.json` and edit values before running `dev-backend.sh`. `setup-dev.sh` copies this automatically if the file is missing.
+Copy `scripts/env.local.json.example` to `components/infra/env.local.json` and edit values before running `dev-backend.sh`. `setup-dev.sh` copies this automatically if the file is missing.

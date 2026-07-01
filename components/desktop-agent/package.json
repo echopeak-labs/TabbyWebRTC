@@ -1,0 +1,10 @@
+{
+  "name": "desktop-agent",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "bash ../../scripts/dev-agent-local.sh",
+    "build": "cargo build --release",
+    "test": "cargo test"
+  }
+}

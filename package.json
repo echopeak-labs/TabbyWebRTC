@@ -6,25 +6,30 @@
   "engines": {
     "node": ">=22"
   },
+  "workspaces": [
+    "components/*"
+  ],
   "scripts": {
     "setup": "bash scripts/setup-dev.sh",
-    "dev:frontend": "bash scripts/dev-frontend.sh",
+    "dev": "concurrently -k -n frontend,server,agent -c blue,green,magenta \"yarn dev:frontend\" \"yarn dev:server\" \"yarn dev:agent\"",
+    "dev:frontend": "bash scripts/dev-frontend-local.sh",
+    "dev:server": "bash scripts/dev-testserver-local.sh",
+    "dev:agent": "yarn workspace desktop-agent dev",
     "dev:backend": "bash scripts/dev-backend.sh",
-    "dev:local": "bash scripts/dev-local.sh",
-    "build": "npm run build:frontend && npm run build:infra && npm run build:agent",
-    "build:frontend": "npm run build --prefix frontend",
-    "build:infra": "npm run build --prefix infra",
-    "build:agent": "cargo build --release --manifest-path desktop-agent/Cargo.toml",
+    "build": "yarn build:frontend && yarn build:infra && yarn build:agent",
+    "build:frontend": "yarn workspace frontend build",
+    "build:infra": "yarn workspace infra build",
+    "build:agent": "yarn workspace desktop-agent build",
     "package:agent": "bash scripts/package-agent-local.sh",
-    "test": "npm run test:infra && npm run test:agent && npm run test:frontend && npm run test:testServer",
-    "test:testServer": "npm test --prefix testServer",
-    "test:frontend": "npm run typecheck --prefix frontend",
-    "test:infra": "npm test --prefix infra",
-    "test:agent": "cargo test --manifest-path desktop-agent/Cargo.toml",
-    "lint": "npm run lint --prefix frontend",
-    "typecheck": "npm run typecheck --prefix frontend && npm run build --prefix infra",
-    "cdk:synth": "npm run cdk --prefix infra -- synth --context env=dev",
-    "cdk:synth:prod": "npm run cdk --prefix infra -- synth --context env=prod",
+    "test": "yarn test:infra && yarn test:agent && yarn test:frontend && yarn test:testServer",
+    "test:testServer": "yarn workspace tabbywebrtc-test-server test",
+    "test:frontend": "yarn workspace frontend typecheck",
+    "test:infra": "yarn workspace infra test",
+    "test:agent": "yarn workspace desktop-agent test",
+    "lint": "yarn workspace frontend lint",
+    "typecheck": "yarn workspace frontend typecheck && yarn workspace infra build",
+    "cdk:synth": "yarn workspace infra cdk synth --context env=dev",
+    "cdk:synth:prod": "yarn workspace infra cdk synth --context env=prod",
     "cdk:deploy:dev": "bash scripts/deploy-dev.sh",
     "cdk:deploy:prod": "bash scripts/deploy-prod.sh",
     "deploy:iam": "tsx scripts/deploy-iam.ts",
@@ -34,6 +39,7 @@
   "devDependencies": {
     "@aws-sdk/client-iam": "^3.1075.0",
     "@aws-sdk/client-sts": "^3.1075.0",
+    "concurrently": "^9.2.1",
     "tsx": "^4.20.3"
   }
 }

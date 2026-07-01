@@ -9,9 +9,9 @@ Deploy the TabbyWebRTCProd CDK stack to AWS (us-east-1, requires confirmation).
 
 Prerequisites:
   AWS CLI v2 with deploy credentials
-  infra/.env with CLERK_JWKS_URL, TABBYWEBRTC_JWT_SECRET, TURN_SECRET, TURN_URLS, ACM_CERTIFICATE_ARN
+  components/infra/.env with CLERK_JWKS_URL, TABBYWEBRTC_JWT_SECRET, TURN_SECRET, TURN_URLS, ACM_CERTIFICATE_ARN
 
-Optional DNS update after deploy (set in infra/.env or environment):
+Optional DNS update after deploy (set in components/infra/.env or environment):
   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID
 
 EOF
@@ -33,15 +33,17 @@ fi
 export AWS_REGION=us-east-1
 export CDK_DEFAULT_REGION=us-east-1
 
-if [[ -f "$ROOT/infra/.env" ]]; then
+if [[ -f "$ROOT/components/infra/.env" ]]; then
   set -a
-  source "$ROOT/infra/.env"
+  source "$ROOT/components/infra/.env"
   set +a
 fi
 
-cd "$ROOT/infra"
-npm ci
-npx cdk deploy TabbyWebRTCProd --require-approval never --context env=prod --outputs-file cdk-outputs.json
+cd "$ROOT"
+yarn install --frozen-lockfile 2>/dev/null || yarn install
+
+cd "$ROOT/components/infra"
+yarn cdk deploy TabbyWebRTCProd --require-approval never --context env=prod --outputs-file cdk-outputs.json
 
 CF_DOMAIN=$(jq -r '.TabbyWebRTCProd.FrontendDistributionDomain // empty' cdk-outputs.json)
 if [[ -n "${CLOUDFLARE_API_TOKEN:-}" && -n "${CLOUDFLARE_ZONE_ID:-}" && -n "$CF_DOMAIN" ]]; then

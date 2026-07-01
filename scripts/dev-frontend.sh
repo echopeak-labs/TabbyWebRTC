@@ -21,8 +21,8 @@ fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-cd "$ROOT/frontend"
+cd "$ROOT/components/frontend"
 VITE_WS_URL="ws://localhost:3001" \
 VITE_REST_URL="http://localhost:3001" \
 VITE_CLERK_PUBLISHABLE_KEY="${CLERK_PUBLISHABLE_KEY:-}" \
-npx vite --port 5173
+yarn vite --port 5173

@@ -4,8 +4,8 @@ on:
   push:
     branches: [develop, main]
     paths:
-      - 'infra/**'
-      - 'frontend/**'
+      - 'components/infra/**'
+      - 'components/frontend/**'
 
 permissions:
   id-token: write
@@ -50,8 +50,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: infra/package-lock.json
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -59,8 +59,11 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
       - name: CDK deploy
-        working-directory: infra
+        working-directory: components/infra
         env:
           CLERK_JWKS_URL: ${{ secrets.CLERK_JWKS_URL }}
           CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
@@ -73,15 +76,14 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           ACM_CERTIFICATE_ARN: ${{ secrets.ACM_CERTIFICATE_ARN }}
         run: |
-          npm ci
-          npx cdk deploy ${{ needs.resolve-env.outputs.stack_name }} \
+          yarn cdk deploy ${{ needs.resolve-env.outputs.stack_name }} \
             --require-approval never \
             --context env=${{ needs.resolve-env.outputs.stage }} \
             --outputs-file cdk-outputs.json
 
       - name: Extract stack outputs
         id: cdk
-        working-directory: infra
+        working-directory: components/infra
         run: |
           STACK="${{ needs.resolve-env.outputs.stack_name }}"
           echo "frontend_bucket=$(jq -r --arg s "$STACK" '.[$s].FrontendBucketName' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
@@ -94,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cdk-outputs
-          path: infra/cdk-outputs.json
+          path: components/infra/cdk-outputs.json
 
   dns:
     needs: [resolve-env, infra]
@@ -120,8 +122,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -129,19 +131,20 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
       - name: Build frontend
-        working-directory: frontend
+        working-directory: components/frontend
         env:
           VITE_WS_URL: ${{ needs.infra.outputs.ws_url }}
           VITE_REST_URL: ${{ needs.infra.outputs.rest_url }}
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-        run: |
-          npm ci
-          npm run build
+        run: yarn build
 
       - name: Deploy frontend to S3 and invalidate CloudFront
         run: |
           BUCKET="${{ needs.infra.outputs.frontend_bucket }}"
           DIST="${{ needs.infra.outputs.frontend_dist_id }}"
-          aws s3 sync frontend/dist/ "s3://${BUCKET}/" --delete
+          aws s3 sync components/frontend/dist/ "s3://${BUCKET}/" --delete
           aws cloudfront create-invalidation --distribution-id "$DIST" --paths "/*"

@@ -26,21 +26,19 @@ command -v node >/dev/null || { echo "Node.js 22+ required"; exit 1; }
 command -v cargo >/dev/null || { echo "Rust stable toolchain required"; exit 1; }
 command -v aws >/dev/null || { echo "AWS CLI v2 required"; exit 1; }
 
-echo "Installing frontend deps..."
-npm ci --prefix "$ROOT/frontend"
-
-echo "Installing infra deps..."
-npm ci --prefix "$ROOT/infra"
+echo "Installing workspace dependencies..."
+cd "$ROOT"
+yarn install --frozen-lockfile 2>/dev/null || yarn install
 
 echo "Building desktop agent (debug)..."
-cargo build --manifest-path "$ROOT/desktop-agent/Cargo.toml"
+cargo build --manifest-path "$ROOT/components/desktop-agent/Cargo.toml"
 
 echo "Copying env templates..."
-cp "$ROOT/frontend/.env.example" "$ROOT/frontend/.env.local"
-cp "$ROOT/infra/.env.example" "$ROOT/infra/.env"
+cp "$ROOT/components/frontend/.env.example" "$ROOT/components/frontend/.env.local"
+cp "$ROOT/components/infra/.env.example" "$ROOT/components/infra/.env"
 
-if [[ ! -f "$ROOT/infra/env.local.json" ]]; then
-  cp "$ROOT/scripts/env.local.json.example" "$ROOT/infra/env.local.json"
+if [[ ! -f "$ROOT/components/infra/env.local.json" ]]; then
+  cp "$ROOT/scripts/env.local.json.example" "$ROOT/components/infra/env.local.json"
 fi
 
-echo "Setup complete. Edit frontend/.env.local and infra/.env before running dev servers."
+echo "Setup complete. Edit components/frontend/.env.local and components/infra/.env before running dev servers."

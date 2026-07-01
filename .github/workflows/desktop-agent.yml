@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'desktop-agent/**'
+      - 'components/desktop-agent/**'
       - '.github/workflows/desktop-agent.yml'
       - 'scripts/generate-manifest.sh'
     tags:
@@ -26,7 +26,7 @@ jobs:
             echo "env_prefix=prod" >> "$GITHUB_OUTPUT"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
-            version="$(grep '^package.version' desktop-agent/Cargo.toml | head -1 | sed 's/.*= "\(.*\)".*/\1/')"
+            version="$(grep '^package.version' components/desktop-agent/Cargo.toml | head -1 | sed 's/.*= "\(.*\)".*/\1/')"
             echo "version=${version}" >> "$GITHUB_OUTPUT"
             echo "env_prefix=dev" >> "$GITHUB_OUTPUT"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
@@ -67,7 +67,7 @@ jobs:
       VERSION: ${{ needs.prepare.outputs.version }}
     defaults:
       run:
-        working-directory: desktop-agent
+        working-directory: components/desktop-agent
 
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: desktop-agent
+          workspaces: components/desktop-agent
       - name: Install cross-compile deps (aarch64 Linux)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
@@ -128,7 +128,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.platform_key }}
-          path: desktop-agent/packaged/
+          path: components/desktop-agent/packaged/
 
   publish:
     needs: [prepare, build]

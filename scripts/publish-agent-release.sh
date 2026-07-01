@@ -12,7 +12,7 @@ Requires: aws CLI, R2 credentials in environment (R2_ACCESS_KEY_ID, R2_SECRET_AC
           R2_BUCKET, R2_ACCOUNT_ID).
 
 Steps:
-  1. Verify packaged installers exist in desktop-agent/packaged/
+  1. Verify packaged installers exist in components/desktop-agent/packaged/
   2. Compute SHA-256 per artifact
   3. Generate manifest.json
   4. Upload artifacts to s3://{bucket}/{env}/{version}/
@@ -40,7 +40,7 @@ fi
 : "${R2_BUCKET:?R2_BUCKET is required}"
 : "${R2_ACCOUNT_ID:?R2_ACCOUNT_ID is required}"
 
-PACKAGED="$ROOT/desktop-agent/packaged"
+PACKAGED="$ROOT/components/desktop-agent/packaged"
 if [[ ! -d "$PACKAGED" ]]; then
   echo "packaged directory not found: $PACKAGED" >&2
   exit 1

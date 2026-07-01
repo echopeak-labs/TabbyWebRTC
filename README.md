@@ -19,9 +19,9 @@ The desktop agent never changes display settings on the host.
 
 | Component | Location | Role |
 |---|---|---|
-| Desktop agent | `desktop-agent/` | Rust service — screen capture, input injection, WebRTC peer |
-| Web viewer | `frontend/` | React + TypeScript app — auth, launchpad, stream viewer |
-| Backend | `infra/` | AWS CDK stack — WebSocket signaling, REST auth, TURN credentials, update distribution |
+| Desktop agent | `components/desktop-agent/` | Rust service — screen capture, input injection, WebRTC peer |
+| Web viewer | `components/frontend/` | React + TypeScript app — auth, launchpad, stream viewer |
+| Backend | `components/infra/` | AWS CDK stack — WebSocket signaling, REST auth, TURN credentials, update distribution |
 | CI/CD | `.github/workflows/`, `scripts/` | GitHub Actions pipelines and developer tooling |
 
 Signaling and session management run on AWS Lambda with DynamoDB. The static frontend deploys to Cloudflare Pages. Agent installers are distributed via Cloudflare R2 behind the REST API.
@@ -31,48 +31,55 @@ Signaling and session management run on AWS Lambda with DynamoDB. The static fro
 ### Prerequisites
 
 - Node.js 22+
+- Yarn 1.x
 - Rust stable toolchain
 - AWS CLI v2 (for backend deploy and local SAM)
 
 ### Setup
 
 ```bash
-npm run setup
+yarn setup
 ```
 
-Edit `frontend/.env.local` and `infra/.env` with your Clerk and AWS values, then start the dev servers:
+Edit `components/frontend/.env.local` and `components/infra/.env` with your Clerk and AWS values, then start the local stack:
 
 ```bash
-npm run dev:backend    # signaling API on :3001
-npm run dev:frontend   # Vite dev server on :5173
+yarn dev
+```
+
+For SAM-based backend signaling instead of the local test server:
+
+```bash
+yarn dev:backend    # signaling API on :3001
+yarn dev:frontend   # Vite dev server on :5173
 ```
 
 ### Build everything
 
 ```bash
-npm run build
+yarn build
 ```
 
 Individual targets:
 
 ```bash
-npm run build:frontend
-npm run build:infra
-npm run build:agent
+yarn build:frontend
+yarn build:infra
+yarn build:agent
 ```
 
 ### Package the desktop agent (current host platform)
 
 ```bash
-npm run package:agent
+yarn package:agent
 ```
 
-Installers are written to `desktop-agent/packaged/`.
+Installers are written to `components/desktop-agent/packaged/`.
 
 ### Tests
 
 ```bash
-npm test
+yarn test
 ```
 
 ## Desktop agent downloads
@@ -95,15 +102,18 @@ Replace `REPLACE_DEV_REST_URL` with the `RestEndpoint` CDK output from `TabbyWeb
 
 | Command | Description |
 |---|---|
-| `npm run setup` | One-time local dev environment setup |
-| `npm run dev:frontend` | Start Vite dev server |
-| `npm run dev:backend` | Start local signaling via SAM |
-| `npm run build` | Build frontend, infra, and agent |
-| `npm run package:agent` | Build release binary and package installer for this host |
-| `npm run test` | Run frontend typecheck, infra Jest tests, and agent cargo tests |
-| `npm run cdk:synth` | Synthesize dev CDK stack |
-| `npm run cdk:deploy:dev` | Deploy dev stack |
-| `npm run cdk:deploy:prod` | Deploy prod stack |
+| `yarn setup` | One-time local dev environment setup |
+| `yarn dev` | Start test server, frontend, and desktop agent concurrently |
+| `yarn dev:frontend` | Start Vite dev server |
+| `yarn dev:server` | Start local NestJS test server |
+| `yarn dev:agent` | Build and run the desktop agent |
+| `yarn dev:backend` | Start local signaling via SAM |
+| `yarn build` | Build frontend, infra, and agent |
+| `yarn package:agent` | Build release binary and package installer for this host |
+| `yarn test` | Run frontend typecheck, infra Jest tests, and agent cargo tests |
+| `yarn cdk:synth` | Synthesize dev CDK stack |
+| `yarn cdk:deploy:dev` | Deploy dev stack |
+| `yarn cdk:deploy:prod` | Deploy prod stack |
 
 ## License
 
