@@ -1,5 +1,5 @@
 {
-  "name": "tabbyrdp",
+  "name": "tabbywebrtc",
   "private": true,
   "version": "0.1.0",
   "description": "Remote desktop streaming with a browser-based viewer and mobile auth key",

@@ -16,7 +16,7 @@ This is identical to how [PairDrop](https://pairdrop.net) works: a lightweight s
 
 ## Unified Product: Local + Remote
 
-TabbyRDP supports **both** scenarios with the **same user flow**. The viewer never picks "LAN mode" vs "remote mode" — they always scan a QR code with their phone and approve. The system picks the fastest path after auth.
+TabbyWebRTC supports **both** scenarios with the **same user flow**. The viewer never picks "LAN mode" vs "remote mode" — they always scan a QR code with their phone and approve. The system picks the fastest path after auth.
 
 | Scenario | Where viewer is | Where agent is | Auth | Signaling | Video path |
 |---|---|---|---|---|---|
@@ -43,7 +43,7 @@ Browser Tab ◄═════════════════════�
 
 PATH B — WAN (Remote)
 ─────────────────────
-Browser Tab ──── WSS wss://signal.tabbyrdp.com ────► AWS API GW ◄──► Desktop Agent
+Browser Tab ──── WSS wss://signal.tabbywebrtc.com ────► AWS API GW ◄──► Desktop Agent
                  SDP + ICE only (setup, few KB)
 
 Browser Tab ◄═══════════════════════════════════════► Desktop Agent
@@ -72,7 +72,7 @@ After mobile approves the session, the desktop viewer runs **path negotiation**:
 
 **Airport → home desktop**
 
-1. User opens TabbyRDP on a library PC → QR appears.
+1. User opens TabbyWebRTC on a library PC → QR appears.
 2. Phone scans QR → Face ID → picks "Home Desktop" → Approve.
 3. No `localEndpoint` (different network). Path B. AWS relays SDP/ICE.
 4. WebRTC connects over internet; TURN used if home router blocks inbound UDP.
@@ -80,7 +80,7 @@ After mobile approves the session, the desktop viewer runs **path negotiation**:
 
 **Bedroom → downstairs desktop (same house)**
 
-1. User opens TabbyRDP on tablet → same QR flow (or token cloned from another tab).
+1. User opens TabbyWebRTC on tablet → same QR flow (or token cloned from another tab).
 2. Phone on same Wi‑Fi scans → Approve. Mobile includes agent's LAN URL in approve payload.
 3. Viewer probes `192.168.1.42:7700` → success. Path A for signaling.
 4. WebRTC uses LAN host candidates → sub‑5 ms latency, no cloud bandwidth for video.
@@ -102,7 +102,7 @@ Desktop Agent local server (port 7700):
 
 ### Local Signaling Auth (Path A Only)
 
-Path A does **not** skip identity checks — it only skips **AWS for SDP/ICE**. The viewer must already hold a valid TabbyRDP JWT from the QR approval (Path B auth step). The local WebSocket upgrade requires:
+Path A does **not** skip identity checks — it only skips **AWS for SDP/ICE**. The viewer must already hold a valid TabbyWebRTC JWT from the QR approval (Path B auth step). The local WebSocket upgrade requires:
 
 - `Authorization: Bearer <tabbyRDP JWT>`, or
 - `X-Local-Token: <localToken>` from `AUTH_APPROVED.localEndpoint` (HMAC, 60 s TTL)
@@ -125,11 +125,11 @@ When `localEndpoint` is present and reachable, `signal-client.ts` opens a second
 
 ### LAN Discovery via mDNS
 
-The desktop agent advertises itself on the local network using mDNS (multicast DNS). Service name: `_tabbyrdp._tcp.local`.
+The desktop agent advertises itself on the local network using mDNS (multicast DNS). Service name: `_tabbywebrtc._tcp.local`.
 
 ```
 Service record:
-  name:    <agentName>._tabbyrdp._tcp.local
+  name:    <agentName>._tabbywebrtc._tcp.local
   port:    7700
   txt:     agentId=<uuid> version=1 platform=linux
 ```
@@ -174,7 +174,7 @@ The mobile app can discover agents on the LAN using the browser's mDNS API (limi
 
 ### API Gateway WebSocket
 
-- Single endpoint: `wss://signal.tabbyrdp.com`
+- Single endpoint: `wss://signal.tabbywebrtc.com`
 - Routes: `$connect`, `$disconnect`, `$default`
 - Passes `connectionId` to all Lambda invocations.
 - Max message size: 128 KB (sufficient for SDP offers; typical SDP ~4 KB).

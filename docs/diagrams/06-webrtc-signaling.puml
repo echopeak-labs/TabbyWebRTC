@@ -1,10 +1,10 @@
-@startuml tabbyrdp-webrtc-signaling
+@startuml tabbywebrtc-webrtc-signaling
 skinparam backgroundColor #FAFAFA
 skinparam shadowing false
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Helvetica
 
-title TabbyRDP — WebRTC Client / Server Communication\n<size:12>Agent is SDP offerer · Browser is answerer · Signaling relayed via AWS or LAN WS</size>
+title TabbyWebRTC — WebRTC Client / Server Communication\n<size:12>Agent is SDP offerer · Browser is answerer · Signaling relayed via AWS or LAN WS</size>
 
 participant "Browser Tab\n(useWebRTC)" as browser
 participant "Signal Client\n(WSS or LAN :7700)" as signal
@@ -18,7 +18,7 @@ participant "CoTURN / STUN" as ice
 
 == 0 — Pre-flight: TURN credentials ==
 
-browser -> signal : GET /turn-credentials\nAuthorization: TabbyRDP JWT
+browser -> signal : GET /turn-credentials\nAuthorization: TabbyWebRTC JWT
 signal -> browser : { urls, username, credential, ttl:86400 }
 browser -> browser : RTCPeerConnection config\nSTUN + dynamic TURN
 

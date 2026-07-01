@@ -15,8 +15,8 @@
         "logs:ListTagsLogGroup"
       ],
       "Resource": [
-        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/TabbyRDPDev-*",
-        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/TabbyRDPProd-*"
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/TabbyWebRTCDev-*",
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/TabbyWebRTCProd-*"
       ]
     }
   ]

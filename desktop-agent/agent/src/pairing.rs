@@ -43,13 +43,13 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
     };
 
     let pairing_url = format!(
-        "https://app.tabbyrdp.com/pair?agentId={}&pubkey={}",
+        "https://app.tabbywebrtc.com/pair?agentId={}&pubkey={}",
         config.agent.id, public_key_b64
     );
 
     info!("No agent JWT found in OS keychain");
     println!();
-    println!("TabbyRDP agent is not paired.");
+    println!("TabbyWebRTC agent is not paired.");
     println!("Open this URL on a signed-in device to pair:");
     println!("  {pairing_url}");
     println!();

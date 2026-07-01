@@ -121,7 +121,7 @@ export function TopBar({ peerConnection = null, onAgentSwitch }: TopBarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4">
       <div className="flex items-center gap-4">
-        <span className="text-lg font-bold text-primary">TabbyRDP</span>
+        <span className="text-lg font-bold text-primary">TabbyWebRTC</span>
 
         <div className="relative" ref={agentMenuRef}>
           <button

@@ -33,8 +33,8 @@ async function onConnect(connectionId: string, queryParams: Record<string, strin
 ```
 
 Connection URL format:
-- Browser: `wss://signal.tabbyrdp.com?clientType=browser&userId=<userId>`
-- Agent: `wss://signal.tabbyrdp.com?clientType=agent&agentId=<agentId>&userId=<userId>`
+- Browser: `wss://signal.tabbywebrtc.com?clientType=browser&userId=<userId>`
+- Agent: `wss://signal.tabbywebrtc.com?clientType=agent&agentId=<agentId>&userId=<userId>`
 
 ### `$disconnect` Handler
 

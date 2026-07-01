@@ -32,7 +32,7 @@ export class FrontendHosting extends Construct {
     );
 
     this.bucket = new s3.Bucket(this, 'Bucket', {
-      bucketName: `tabbyrdp-web-${props.envName}`,
+      bucketName: `tabbywebrtc-web-${props.envName}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -76,6 +76,6 @@ export class FrontendHosting extends Construct {
       certificate,
     });
 
-    Tags.of(this).add('project', 'tabbyrdp');
+    Tags.of(this).add('project', 'tabbywebrtc');
   }
 }

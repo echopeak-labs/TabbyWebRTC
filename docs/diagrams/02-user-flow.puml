@@ -1,10 +1,10 @@
-@startuml tabbyrdp-user-flow
+@startuml tabbywebrtc-user-flow
 skinparam backgroundColor #FAFAFA
 skinparam shadowing false
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Helvetica
 
-title TabbyRDP — End-to-End User Flow\n<size:12>Desktop viewer tabs, mobile auth key, launchpad, and streaming</size>
+title TabbyWebRTC — End-to-End User Flow\n<size:12>Desktop viewer tabs, mobile auth key, launchpad, and streaming</size>
 
 actor "User" as user
 participant "Desktop Tab 1\n(ConnectPage)" as tab1
@@ -18,7 +18,7 @@ participant "Launchpad / Stream\n(desktop tabs)" as ui
 
 == Phase 1 — First desktop tab: connect ==
 
-user -> tab1 : open app.tabbyrdp.com
+user -> tab1 : open app.tabbywebrtc.com
 tab1 -> tab1 : useDeviceType() → desktop-viewer
 tab1 -> bc : initAuthSync()\nREQUEST_AUTH_TOKEN
 bc --> tab1 : (no response in 150ms)
@@ -43,7 +43,7 @@ opt same LAN as agent
   mobile -> mobile : attach localEndpoint\n{ url, localToken }
 end
 mobile -> rest : POST /auth/approve\nAuthorization: Clerk JWT\n{ pendingSessionId, agentId, encryptedSalt, localEndpoint? }
-rest -> rest : verify Clerk JWT\nconsume pendingSessionId (single-use)\nissue TabbyRDP JWT (8h)
+rest -> rest : verify Clerk JWT\nconsume pendingSessionId (single-use)\nissue TabbyWebRTC JWT (8h)
 rest -> aws : PostToConnection → tab1
 aws -> tab1 : AUTH_APPROVED\n{ token, agentId, localEndpoint? }
 tab1 -> tab1 : sessionStorage ← token, agentId\nauthStore updated
@@ -109,7 +109,7 @@ agent -> agent : receive agent JWT → OS keychain
 
 legend right
   | Role | Auth credential | Storage |
-  | Desktop viewer | TabbyRDP JWT | sessionStorage |
+  | Desktop viewer | TabbyWebRTC JWT | sessionStorage |
   | Mobile key | Clerk JWT | Clerk SDK |
   | Desktop agent | Agent JWT | OS keychain |
 endlegend

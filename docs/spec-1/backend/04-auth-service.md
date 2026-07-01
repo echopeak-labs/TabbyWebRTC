@@ -86,22 +86,22 @@ Lambda `auth-handler`:
 2. Looks up `pendingSessionId` in DynamoDB. Returns 404 if not found or expired.
 3. Validates that `agentId` belongs to `userId` (checks `agents` table).
 4. Deletes `pendingSessionId` record (single-use invalidation).
-5. Issues a TabbyRDP session JWT (see below).
+5. Issues a TabbyWebRTC session JWT (see below).
 6. Sends `AUTH_APPROVED { token, agentId }` to the browser's `connectionId` via API GW Management API.
 
 ---
 
-## TabbyRDP Session JWT
+## TabbyWebRTC Session JWT
 
 Issued by the `auth-handler` Lambda after successful mobile authorization. Signed with a symmetric HS256 secret stored in AWS Secrets Manager.
 
 ```ts
-interface TabbyRDPTokenPayload {
+interface TabbyWebRTCTokenPayload {
   sub: string           // userId (from Clerk)
   agentId: string
   iat: number
   exp: number           // iat + 28800 (8 hours)
-  iss: 'tabbyrdp'
+  iss: 'tabbywebrtc'
 }
 ```
 
@@ -110,12 +110,12 @@ Signing:
 ```ts
 import * as jose from 'jose'
 
-const secret = new TextEncoder().encode(process.env.TABBYRDP_JWT_SECRET!)
+const secret = new TextEncoder().encode(process.env.TABBYWEBRTC_JWT_SECRET!)
 
 const token = await new jose.SignJWT({ agentId })
   .setProtectedHeader({ alg: 'HS256' })
   .setSubject(userId)
-  .setIssuer('tabbyrdp')
+  .setIssuer('tabbywebrtc')
   .setIssuedAt()
   .setExpirationTime('8h')
   .sign(secret)
@@ -126,12 +126,12 @@ const token = await new jose.SignJWT({ agentId })
 Applied by all Lambda handlers that receive REST or WebSocket messages requiring auth:
 
 ```ts
-export async function verifyTabbyRDPToken(token: string): Promise<TabbyRDPTokenPayload> {
-  const secret = new TextEncoder().encode(process.env.TABBYRDP_JWT_SECRET!)
+export async function verifyTabbyWebRTCToken(token: string): Promise<TabbyWebRTCTokenPayload> {
+  const secret = new TextEncoder().encode(process.env.TABBYWEBRTC_JWT_SECRET!)
   const { payload } = await jose.jwtVerify(token, secret, {
-    issuer: 'tabbyrdp',
+    issuer: 'tabbywebrtc',
   })
-  return payload as TabbyRDPTokenPayload
+  return payload as TabbyWebRTCTokenPayload
 }
 ```
 
@@ -147,7 +147,7 @@ interface AgentTokenPayload {
   userId: string
   iat: number
   exp: number           // iat + 86400 * 365 (1 year, refreshed on heartbeat)
-  iss: 'tabbyrdp-agent'
+  iss: 'tabbywebrtc-agent'
 }
 ```
 
@@ -188,7 +188,7 @@ Authorization: Bearer <tabbyRDPToken>
 
 Lambda:
 
-1. Validates TabbyRDP token → extracts `userId`.
+1. Validates TabbyWebRTC token → extracts `userId`.
 2. Queries `agents` table by `userId` GSI.
 3. Returns online/offline status, name, platform for each agent.
 

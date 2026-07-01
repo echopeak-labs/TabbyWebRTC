@@ -1,7 +1,7 @@
 use anyhow::Context;
 use keyring::Entry;
 
-const SERVICE: &str = "tabbyrdp-agent";
+const SERVICE: &str = "tabbywebrtc-agent";
 const JWT_ACCOUNT: &str = "agent-jwt";
 const PAIRING_KEY_ACCOUNT: &str = "pairing-private-key";
 const PAIRING_PUBKEY_ACCOUNT: &str = "pairing-public-key";

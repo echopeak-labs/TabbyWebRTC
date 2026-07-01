@@ -26,8 +26,8 @@
         "cloudformation:UntagResource"
       ],
       "Resource": [
-        "arn:aws:cloudformation:us-east-1:*:stack/TabbyRDPDev/*",
-        "arn:aws:cloudformation:us-east-1:*:stack/TabbyRDPProd/*",
+        "arn:aws:cloudformation:us-east-1:*:stack/TabbyWebRTCDev/*",
+        "arn:aws:cloudformation:us-east-1:*:stack/TabbyWebRTCProd/*",
         "arn:aws:cloudformation:us-east-1:*:stack/CDKToolkit/*"
       ]
     },

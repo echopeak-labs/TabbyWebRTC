@@ -3,7 +3,7 @@ import { signalClient } from '@/lib/signal-client'
 import { useAgentStore } from '@/stores/agentStore'
 import type { AppWindow, Display } from '@/types/agent'
 
-const LOCAL_ENDPOINT_KEY = 'tabbyrdp_local_endpoint'
+const LOCAL_ENDPOINT_KEY = 'tabbywebrtc_local_endpoint'
 const SOURCE_POLL_MS = 30_000
 
 interface SourceView {

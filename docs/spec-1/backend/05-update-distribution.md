@@ -2,7 +2,7 @@
 
 ## Scope
 
-Defines the desktop agent update API: REST endpoints on the existing API Gateway that serve a version manifest and stream native installer artifacts from Cloudflare R2. Each CDK stack (`TabbyRDPDev`, `TabbyRDPProd`) exposes the same route shape but reads a different R2 prefix.
+Defines the desktop agent update API: REST endpoints on the existing API Gateway that serve a version manifest and stream native installer artifacts from Cloudflare R2. Each CDK stack (`TabbyWebRTCDev`, `TabbyWebRTCProd`) exposes the same route shape but reads a different R2 prefix.
 
 ---
 
@@ -12,7 +12,7 @@ Defines the desktop agent update API: REST endpoints on the existing API Gateway
 [Desktop Agent / Browser / README link]
         |
         v
-[API Gateway REST]  tabbyrdp-rest-{env}
+[API Gateway REST]  tabbywebrtc-rest-{env}
         |
         +-- GET /updates/manifest.json  --> [Lambda: updates-handler]
         +-- GET /downloads/{platform}   --> [Lambda: updates-handler]
@@ -30,10 +30,10 @@ R2 is the authoritative store for installer bytes and the manifest. Lambda reads
 
 | CDK stack | `UPDATE_ENV_PREFIX` | R2 prefix |
 |---|---|---|
-| `TabbyRDPDev` | `dev` | `dev/` |
-| `TabbyRDPProd` | `prod` | `prod/` |
+| `TabbyWebRTCDev` | `dev` | `dev/` |
+| `TabbyWebRTCProd` | `prod` | `prod/` |
 
-Each stack has its own REST API (`tabbyrdp-rest-dev`, `tabbyrdp-rest-prod`). This satisfies the dev/prod stage requirement without sharing a single API across environments.
+Each stack has its own REST API (`tabbywebrtc-rest-dev`, `tabbywebrtc-rest-prod`). This satisfies the dev/prod stage requirement without sharing a single API across environments.
 
 ---
 
@@ -59,27 +59,27 @@ Returns the latest release manifest for the deployed environment.
   "published_at": "2026-06-28T12:00:00Z",
   "artifacts": {
     "linux-x86_64": {
-      "filename": "tabbyrdp-agent_1.2.3_amd64.deb",
+      "filename": "tabbywebrtc-agent_1.2.3_amd64.deb",
       "sha256": "a1b2c3d4e5f6...",
       "size_bytes": 12345678
     },
     "linux-aarch64": {
-      "filename": "tabbyrdp-agent_1.2.3_arm64.deb",
+      "filename": "tabbywebrtc-agent_1.2.3_arm64.deb",
       "sha256": "...",
       "size_bytes": 11800000
     },
     "macos-x86_64": {
-      "filename": "tabbyrdp-agent_1.2.3_x86_64.pkg",
+      "filename": "tabbywebrtc-agent_1.2.3_x86_64.pkg",
       "sha256": "...",
       "size_bytes": 14000000
     },
     "macos-aarch64": {
-      "filename": "tabbyrdp-agent_1.2.3_aarch64.pkg",
+      "filename": "tabbywebrtc-agent_1.2.3_aarch64.pkg",
       "sha256": "...",
       "size_bytes": 13500000
     },
     "windows-x86_64": {
-      "filename": "tabbyrdp-agent_1.2.3_x86_64.msi",
+      "filename": "tabbywebrtc-agent_1.2.3_x86_64.msi",
       "sha256": "...",
       "size_bytes": 15000000
     }
@@ -110,8 +110,8 @@ Streams the latest installer for the requested platform. Used by the auto-update
    - `Content-Type` per artifact extension (see table below)
    - `Content-Disposition: attachment; filename="{filename}"`
    - `Content-Length: {size_bytes}` when known
-   - `X-TabbyRDP-Version: {version}`
-   - `X-TabbyRDP-SHA256: {sha256}`
+   - `X-TabbyWebRTC-Version: {version}`
+   - `X-TabbyWebRTC-SHA256: {sha256}`
 
 | Extension | Content-Type |
 |---|---|
@@ -142,12 +142,12 @@ The manifest is written by the release CI pipeline (`cicd/03`). This backend spe
 ## R2 Bucket Layout
 
 ```
-tabbyrdp-releases/
+tabbywebrtc-releases/
   dev/
     manifest.json
     1.2.3/
-      tabbyrdp-agent_1.2.3_amd64.deb
-      tabbyrdp-agent_1.2.3_arm64.deb
+      tabbywebrtc-agent_1.2.3_amd64.deb
+      tabbywebrtc-agent_1.2.3_arm64.deb
       ...
   prod/
     manifest.json
@@ -200,7 +200,7 @@ Use streaming response (`isBase64Encoded: true` with chunked body, or API Gatewa
 
 ## CDK Wiring
 
-Extend `infra/lib/tabbyrdp-stack.ts`:
+Extend `infra/lib/tabbywebrtc-stack.ts`:
 
 ```ts
 const updatesResource = restApi.root.addResource('updates')
@@ -228,7 +228,7 @@ this.updatesFn = new NodejsFunction(this, 'UpdatesHandler', {
   timeout: Duration.seconds(30),
   role: props.lambdaRole,
   environment: {
-    R2_BUCKET: envOrPlaceholder('R2_BUCKET', 'tabbyrdp-releases'),
+    R2_BUCKET: envOrPlaceholder('R2_BUCKET', 'tabbywebrtc-releases'),
     R2_ENDPOINT: envOrPlaceholder('R2_ENDPOINT', 'https://placeholder.r2.cloudflarestorage.com'),
     R2_ACCESS_KEY_ID: envOrPlaceholder('R2_ACCESS_KEY_ID', 'placeholder'),
     R2_SECRET_ACCESS_KEY: envOrPlaceholder('R2_SECRET_ACCESS_KEY', 'placeholder'),
@@ -276,7 +276,7 @@ No AWS-native S3 bucket or IAM S3 policy is required. R2 credentials are injecte
 1. `curl {RestEndpoint}/updates/manifest.json` returns valid JSON manifest for the deployed env.
 2. `curl -L -o out.deb {RestEndpoint}/downloads/linux-x86_64` streams the `.deb` named in the manifest.
 3. `curl {RestEndpoint}/downloads/unknown-platform` returns `404`.
-4. `TabbyRDPDev` and `TabbyRDPProd` stacks read from `dev/` and `prod/` R2 prefixes respectively.
+4. `TabbyWebRTCDev` and `TabbyWebRTCProd` stacks read from `dev/` and `prod/` R2 prefixes respectively.
 5. `cdk synth --context env=dev` and `cdk synth --context env=prod` complete without errors.
 6. Unit tests cover manifest parsing, platform key validation, and missing-artifact 404 paths.
 

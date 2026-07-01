@@ -9,7 +9,7 @@ Defines the Rust desktop agent binary: architecture, threading model, component 
 ## Binary Overview
 
 - **Language:** Rust (stable toolchain, MSRV 1.80)
-- **Binary name:** `tabbyrdp-agent`
+- **Binary name:** `tabbywebrtc-agent`
 - **Run mode:** Standalone executable, no installer required. Can be registered as a system service.
 - **Platforms:** Linux (priority), Windows, macOS.
 - **Startup:** Reads config, connects to AWS WebSocket signaling, begins heartbeat loop. No GUI window.
@@ -101,7 +101,7 @@ All inter-task communication uses `tokio::sync::mpsc` and `tokio::sync::broadcas
 
 ## Configuration
 
-Config file at `~/.config/tabbyrdp/agent.toml` (Linux/macOS) or `%APPDATA%\TabbyRDP\agent.toml` (Windows).
+Config file at `~/.config/tabbywebrtc/agent.toml` (Linux/macOS) or `%APPDATA%\TabbyWebRTC\agent.toml` (Windows).
 
 ```toml
 [agent]
@@ -109,7 +109,7 @@ id = "..."                 # UUID, generated on first run
 name = "Home Desktop"      # Human-readable name shown in UI
 
 [signaling]
-url = "wss://signal.tabbyrdp.com/prod"
+url = "wss://signal.tabbywebrtc.com/prod"
 
 [capture]
 encoder = "auto"           # "auto" | "nvenc" | "vaapi" | "videotoolbox" | "software"
@@ -136,7 +136,7 @@ Config is loaded at startup. If the config file does not exist, defaults are use
    - `GET /sources` → display + app list
    - `GET /thumbnail/<sourceId>` → JPEG thumbnail
    - `WS /signal` → local WebSocket signaling (SDP/ICE relay for LAN path)
-6. Advertise mDNS service `_tabbyrdp._tcp.local` on port 7700.
+6. Advertise mDNS service `_tabbywebrtc._tcp.local` on port 7700.
 7. Start `SourceEnumerator` task.
 9. Connect to AWS WebSocket signaling server with agent JWT in `Authorization` header (WAN path).
 10. Send `AGENT_REGISTER` message with display/app list + `localEndpoint` URL.
@@ -151,7 +151,7 @@ If no agent JWT exists in the OS keychain:
 
 1. Generate Ed25519 keypair. Store private key in OS keychain.
 2. POST to `<REST_API>/agents/pair` with Clerk JWT (user must be logged in on the same machine in a browser or mobile).
-3. Alternatively, display a setup URL: `https://app.tabbyrdp.com/pair?agentId=<id>&pubkey=<base64>`.
+3. Alternatively, display a setup URL: `https://app.tabbywebrtc.com/pair?agentId=<id>&pubkey=<base64>`.
 4. On receipt of agent JWT from server, store in OS keychain.
 5. Exit and prompt user to restart the agent.
 

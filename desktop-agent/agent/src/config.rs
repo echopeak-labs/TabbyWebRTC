@@ -41,10 +41,10 @@ impl Default for AgentConfig {
         Self {
             agent: AgentSection {
                 id: Uuid::new_v4().to_string(),
-                name: "TabbyRDP Agent".into(),
+                name: "TabbyWebRTC Agent".into(),
             },
             signaling: SignalingSection {
-                url: "wss://signal.tabbyrdp.com/prod".into(),
+                url: "wss://signal.tabbywebrtc.com/prod".into(),
             },
             capture: CaptureSection {
                 encoder: "auto".into(),
@@ -63,12 +63,12 @@ pub fn default_config_path() -> anyhow::Result<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         let app_data = std::env::var("APPDATA").context("APPDATA not set")?;
-        Ok(Path::new(&app_data).join("TabbyRDP").join("agent.toml"))
+        Ok(Path::new(&app_data).join("TabbyWebRTC").join("agent.toml"))
     }
     #[cfg(not(target_os = "windows"))]
     {
         let home = std::env::var("HOME").context("HOME not set")?;
-        Ok(Path::new(&home).join(".config").join("tabbyrdp").join("agent.toml"))
+        Ok(Path::new(&home).join(".config").join("tabbywebrtc").join("agent.toml"))
     }
 }
 

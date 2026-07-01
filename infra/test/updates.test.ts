@@ -13,12 +13,12 @@ const sampleManifest = {
   published_at: '2026-06-28T12:00:00Z',
   artifacts: {
     'linux-x86_64': {
-      filename: 'tabbyrdp-agent_1.2.3_amd64.deb',
+      filename: 'tabbywebrtc-agent_1.2.3_amd64.deb',
       sha256: 'abc123',
       size_bytes: 42,
     },
     'linux-aarch64': {
-      filename: 'tabbyrdp-agent_1.2.3_arm64.deb',
+      filename: 'tabbywebrtc-agent_1.2.3_arm64.deb',
       sha256: 'def456',
       size_bytes: 40,
     },
@@ -57,7 +57,7 @@ let downloadArtifact: (platform: string) => Promise<APIGatewayProxyResult>;
 let handler: (event: APIGatewayProxyEvent) => Promise<APIGatewayProxyResult>;
 
 beforeAll(async () => {
-  process.env.R2_BUCKET = 'tabbyrdp-releases';
+  process.env.R2_BUCKET = 'tabbywebrtc-releases';
   process.env.R2_ENDPOINT = 'https://example.r2.cloudflarestorage.com';
   process.env.R2_ACCESS_KEY_ID = 'test-access-key';
   process.env.R2_SECRET_ACCESS_KEY = 'test-secret-key';
@@ -82,7 +82,7 @@ describe('manifest parsing', () => {
     expect(manifest).not.toBeNull();
     expect(manifest?.version).toBe('1.2.3');
     expect(manifest?.artifacts['linux-x86_64']?.filename).toBe(
-      'tabbyrdp-agent_1.2.3_amd64.deb',
+      'tabbywebrtc-agent_1.2.3_amd64.deb',
     );
   });
 
@@ -106,7 +106,7 @@ describe('platform resolution', () => {
   it('resolves known platform keys', () => {
     const manifest = parseManifest(JSON.stringify(sampleManifest))!;
     expect(resolveArtifact(manifest, 'linux-x86_64')?.filename).toBe(
-      'tabbyrdp-agent_1.2.3_amd64.deb',
+      'tabbywebrtc-agent_1.2.3_amd64.deb',
     );
   });
 
@@ -146,7 +146,7 @@ describe('updates handler', () => {
       if (input.Key === 'dev/manifest.json') {
         return { Body: manifestBody() as never };
       }
-      if (input.Key === 'dev/1.2.3/tabbyrdp-agent_1.2.3_amd64.deb') {
+      if (input.Key === 'dev/1.2.3/tabbywebrtc-agent_1.2.3_amd64.deb') {
         return { Body: artifactBody('deb-bytes') as never };
       }
       return Promise.reject({ name: 'NoSuchKey', $metadata: { httpStatusCode: 404 } });
@@ -159,11 +159,11 @@ describe('updates handler', () => {
     expect(Buffer.from(result.body ?? '', 'base64').toString()).toBe('deb-bytes');
     expect(result.headers?.['Content-Type']).toBe('application/vnd.debian.binary-package');
     expect(result.headers?.['Content-Disposition']).toBe(
-      'attachment; filename="tabbyrdp-agent_1.2.3_amd64.deb"',
+      'attachment; filename="tabbywebrtc-agent_1.2.3_amd64.deb"',
     );
     expect(result.headers?.['Content-Length']).toBe('42');
-    expect(result.headers?.['X-TabbyRDP-Version']).toBe('1.2.3');
-    expect(result.headers?.['X-TabbyRDP-SHA256']).toBe('abc123');
+    expect(result.headers?.['X-TabbyWebRTC-Version']).toBe('1.2.3');
+    expect(result.headers?.['X-TabbyWebRTC-SHA256']).toBe('abc123');
   });
 
   it('returns 404 for unknown platform', async () => {
@@ -207,7 +207,7 @@ describe('updates handler', () => {
       if (input.Key === 'dev/manifest.json') {
         return { Body: manifestBody() as never };
       }
-      if (input.Key === 'dev/1.2.3/tabbyrdp-agent_1.2.3_amd64.deb') {
+      if (input.Key === 'dev/1.2.3/tabbywebrtc-agent_1.2.3_amd64.deb') {
         return { Body: artifactBody('deb-bytes') as never };
       }
       return Promise.reject({ name: 'NoSuchKey', $metadata: { httpStatusCode: 404 } });

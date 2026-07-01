@@ -1,10 +1,10 @@
-@startuml tabbyrdp-authentication
+@startuml tabbywebrtc-authentication
 skinparam backgroundColor #FAFAFA
 skinparam shadowing false
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Helvetica
 
-title TabbyRDP — Authentication Architecture\n<size:12>Three token types · QR ephemeral session · mobile-as-key · agent pairing</size>
+title TabbyWebRTC — Authentication Architecture\n<size:12>Three token types · QR ephemeral session · mobile-as-key · agent pairing</size>
 
 box "Identity Provider" #FFF3E0
   participant "Clerk" as clerk
@@ -59,14 +59,14 @@ approve -> authrest : POST /auth/approve\nBearer Clerk JWT\n{ pendingSessionId, 
 authrest -> clerk : verify JWT (JWKS)
 authrest -> pending : get + delete (single-use)
 authrest -> agentsdb : verify agentId ∈ userId
-authrest -> authrest : Sign TabbyRDP JWT (HS256, 8h)\n{ sub:userId, agentId, iss:tabbyrdp }
+authrest -> authrest : Sign TabbyWebRTC JWT (HS256, 8h)\n{ sub:userId, agentId, iss:tabbywebrtc }
 authrest -> push : AUTH_APPROVED → connectionId
 push -> connect : { token, agentId, localEndpoint? }
 connect -> connect : sessionStorage ← token
 connect -> launch : navigate /launchpad
 
 note over connect, launch
-  **TabbyRDP JWT** — desktop streaming session
+  **TabbyWebRTC JWT** — desktop streaming session
   Required for SUBSCRIBE, turn-credentials, LAN WS
   MUST NOT use localStorage or cookies
 end note
@@ -110,14 +110,14 @@ note over clerk, agentsdb
   | POST /auth/approve | Clerk JWT |
   | POST /agents/pair | Clerk JWT |
   | GET /agents | Clerk JWT |
-  | WSS SUBSCRIBE / SDP / ICE | TabbyRDP JWT |
-  | GET /turn-credentials | TabbyRDP JWT |
+  | WSS SUBSCRIBE / SDP / ICE | TabbyWebRTC JWT |
+  | GET /turn-credentials | TabbyWebRTC JWT |
   | Agent WSS connect | Agent JWT |
-  | LAN WS /signal | TabbyRDP JWT or X-Local-Token (60s HMAC) |
+  | LAN WS /signal | TabbyWebRTC JWT or X-Local-Token (60s HMAC) |
 
   **Security rules**
   • pendingSessionId deleted on first approve
-  • Mobile never receives TabbyRDP streaming token
+  • Mobile never receives TabbyWebRTC streaming token
   • WebRTC media encrypted via DTLS-SRTP
 end note
 

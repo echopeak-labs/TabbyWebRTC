@@ -2,7 +2,7 @@
 
 ## Scope
 
-Defines the complete frontend architecture for TabbyRDP: tech stack, folder layout, theming, routing, and global state contracts. All other frontend spec files build on this foundation.
+Defines the complete frontend architecture for TabbyWebRTC: tech stack, folder layout, theming, routing, and global state contracts. All other frontend spec files build on this foundation.
 
 ---
 

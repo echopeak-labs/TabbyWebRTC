@@ -161,10 +161,10 @@ async fn signal_ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 }
 
 pub async fn advertise_mdns(port: u16, agent_name: &str) -> anyhow::Result<()> {
-    let service_type = "_tabbyrdp._tcp.local.";
+    let service_type = "_tabbywebrtc._tcp.local.";
     let instance = format!("{}.{}", agent_name.replace(' ', "-"), service_type);
     let mdns = mdns_sd::ServiceDaemon::new().context("failed to start mDNS daemon")?;
-    let host = "tabbyrdp-agent.local";
+    let host = "tabbywebrtc-agent.local";
 
     let properties = [("version", webrtc_peer::version())];
     mdns.register(mdns_sd::ServiceInfo::new(

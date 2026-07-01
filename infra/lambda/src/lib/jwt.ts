@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import * as jose from 'jose';
 
-export interface TabbyRDPTokenPayload extends jose.JWTPayload {
+export interface TabbyWebRTCTokenPayload extends jose.JWTPayload {
   agentId: string;
   jti?: string;
 }
@@ -20,8 +20,8 @@ function getJwks(): ReturnType<typeof jose.createRemoteJWKSet> {
   return jwks;
 }
 
-function tabbyrdpSecret(): Uint8Array {
-  return new TextEncoder().encode(process.env.TABBYRDP_JWT_SECRET!);
+function tabbywebrtcSecret(): Uint8Array {
+  return new TextEncoder().encode(process.env.TABBYWEBRTC_JWT_SECRET!);
 }
 
 export function extractBearerToken(header: string | undefined): string | undefined {
@@ -41,19 +41,19 @@ export async function verifyClerkJwt(token: string): Promise<{ userId: string }>
   return { userId: payload.sub };
 }
 
-export async function verifyTabbyRDPToken(token: string): Promise<TabbyRDPTokenPayload> {
-  const { payload } = await jose.jwtVerify(token, tabbyrdpSecret(), {
-    issuer: 'tabbyrdp',
+export async function verifyTabbyWebRTCToken(token: string): Promise<TabbyWebRTCTokenPayload> {
+  const { payload } = await jose.jwtVerify(token, tabbywebrtcSecret(), {
+    issuer: 'tabbywebrtc',
   });
   if (!payload.sub || typeof payload.agentId !== 'string') {
-    throw new Error('INVALID_TABBYRDP_TOKEN');
+    throw new Error('INVALID_TABBYWEBRTC_TOKEN');
   }
-  return payload as TabbyRDPTokenPayload;
+  return payload as TabbyWebRTCTokenPayload;
 }
 
 export async function verifyAgentJwt(token: string): Promise<AgentTokenPayload> {
-  const { payload } = await jose.jwtVerify(token, tabbyrdpSecret(), {
-    issuer: 'tabbyrdp-agent',
+  const { payload } = await jose.jwtVerify(token, tabbywebrtcSecret(), {
+    issuer: 'tabbywebrtc-agent',
   });
   if (!payload.sub || typeof payload.userId !== 'string') {
     throw new Error('INVALID_AGENT_TOKEN');
@@ -61,24 +61,24 @@ export async function verifyAgentJwt(token: string): Promise<AgentTokenPayload> 
   return payload as AgentTokenPayload;
 }
 
-export async function issueTabbyRDPToken(userId: string, agentId: string): Promise<string> {
+export async function issueTabbyWebRTCToken(userId: string, agentId: string): Promise<string> {
   return new jose.SignJWT({ agentId, jti: randomUUID() })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(userId)
-    .setIssuer('tabbyrdp')
+    .setIssuer('tabbywebrtc')
     .setIssuedAt()
     .setExpirationTime('8h')
-    .sign(tabbyrdpSecret());
+    .sign(tabbywebrtcSecret());
 }
 
 export async function issueAgentJwt(agentId: string, userId: string): Promise<string> {
   return new jose.SignJWT({ userId, jti: randomUUID() })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(agentId)
-    .setIssuer('tabbyrdp-agent')
+    .setIssuer('tabbywebrtc-agent')
     .setIssuedAt()
     .setExpirationTime('365d')
-    .sign(tabbyrdpSecret());
+    .sign(tabbywebrtcSecret());
 }
 
 export function generateTurnCredential(

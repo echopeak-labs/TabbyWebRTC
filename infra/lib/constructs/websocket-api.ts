@@ -22,7 +22,7 @@ export class WebSocketApiConstruct extends Construct {
     super(scope, id);
 
     this.wsApi = new WebSocketApi(this, 'WsApi', {
-      apiName: `tabbyrdp-signaling-${props.envName}`,
+      apiName: `tabbywebrtc-signaling-${props.envName}`,
       connectRouteOptions: {
         integration: new WebSocketLambdaIntegration('ConnectIntegration', props.wsHandlerFn),
       },
@@ -54,6 +54,6 @@ export class WebSocketApiConstruct extends Construct {
       `https://${this.wsApi.apiId}.execute-api.${Stack.of(this).region}.amazonaws.com/${this.wsStage.stageName}`,
     );
 
-    Tags.of(this).add('project', 'tabbyrdp');
+    Tags.of(this).add('project', 'tabbywebrtc');
   }
 }

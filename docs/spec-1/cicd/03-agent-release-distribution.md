@@ -2,7 +2,7 @@
 
 ## Scope
 
-Defines native installer packaging, R2 upload, manifest generation, and root README download links for the TabbyRDP desktop agent. Builds on the existing `desktop-agent.yml` release matrix and the manifest schema defined in `backend/05-update-distribution.md`.
+Defines native installer packaging, R2 upload, manifest generation, and root README download links for the TabbyWebRTC desktop agent. Builds on the existing `desktop-agent.yml` release matrix and the manifest schema defined in `backend/05-update-distribution.md`.
 
 ---
 
@@ -41,55 +41,55 @@ Each CI matrix target produces one native installer artifact.
 Use `nfpm` with a shared config template in `desktop-agent/packaging/deb/nfpm.yaml`:
 
 ```yaml
-name: tabbyrdp-agent
+name: tabbywebrtc-agent
 arch: amd64   # or arm64 per matrix job
 platform: linux
 version: "${VERSION}"
 section: net
 priority: optional
-maintainer: TabbyRDP
-description: TabbyRDP desktop streaming agent
+maintainer: TabbyWebRTC
+description: TabbyWebRTC desktop streaming agent
 contents:
-  - src: tabbyrdp-agent
-    dst: /usr/bin/tabbyrdp-agent
-  - src: tabbyrdp-agent.service
-    dst: /lib/systemd/system/tabbyrdp-agent.service
+  - src: tabbywebrtc-agent
+    dst: /usr/bin/tabbywebrtc-agent
+  - src: tabbywebrtc-agent.service
+    dst: /lib/systemd/system/tabbywebrtc-agent.service
 scripts:
   postinstall: packaging/deb/postinstall.sh
 ```
 
-Output filename: `tabbyrdp-agent_{version}_{arch}.deb`.
+Output filename: `tabbywebrtc-agent_{version}_{arch}.deb`.
 
 ### Windows `.msi`
 
-Use `cargo-wix` with WiX source in `desktop-agent/packaging/wix/main.wxs`. Installs binary to `Program Files\TabbyRDP\tabbyrdp-agent.exe` and registers a Windows service.
+Use `cargo-wix` with WiX source in `desktop-agent/packaging/wix/main.wxs`. Installs binary to `Program Files\TabbyWebRTC\tabbywebrtc-agent.exe` and registers a Windows service.
 
-Output filename: `tabbyrdp-agent_{version}_x86_64.msi`.
+Output filename: `tabbywebrtc-agent_{version}_x86_64.msi`.
 
 ### macOS `.pkg`
 
 Build script `desktop-agent/packaging/macos/build-pkg.sh`:
 
-1. Stage binary to `payload/usr/local/bin/tabbyrdp-agent`.
-2. `pkgbuild --root payload --identifier com.tabbyrdp.agent --version {version} tabbyrdp-agent-{version}-{arch}.pkg`.
+1. Stage binary to `payload/usr/local/bin/tabbywebrtc-agent`.
+2. `pkgbuild --root payload --identifier com.tabbywebrtc.agent --version {version} tabbywebrtc-agent-{version}-{arch}.pkg`.
 3. Optionally wrap with `productbuild` for distribution pkg.
 
-Output filename: `tabbyrdp-agent_{version}_{arch}.pkg` where `arch` is `x86_64` or `aarch64`.
+Output filename: `tabbywebrtc-agent_{version}_{arch}.pkg` where `arch` is `x86_64` or `aarch64`.
 
 ---
 
 ## R2 Bucket Layout
 
 ```
-tabbyrdp-releases/
+tabbywebrtc-releases/
   dev/
     manifest.json
     1.2.3/
-      tabbyrdp-agent_1.2.3_amd64.deb
-      tabbyrdp-agent_1.2.3_arm64.deb
-      tabbyrdp-agent_1.2.3_x86_64.pkg
-      tabbyrdp-agent_1.2.3_aarch64.pkg
-      tabbyrdp-agent_1.2.3_x86_64.msi
+      tabbywebrtc-agent_1.2.3_amd64.deb
+      tabbywebrtc-agent_1.2.3_arm64.deb
+      tabbywebrtc-agent_1.2.3_x86_64.pkg
+      tabbywebrtc-agent_1.2.3_aarch64.pkg
+      tabbywebrtc-agent_1.2.3_x86_64.msi
   prod/
     manifest.json
     ...
@@ -111,7 +111,7 @@ After all matrix jobs complete, a `publish` job aggregates artifact metadata and
   "published_at": "2026-06-28T12:00:00Z",
   "artifacts": {
     "linux-x86_64": {
-      "filename": "tabbyrdp-agent_1.2.3_amd64.deb",
+      "filename": "tabbywebrtc-agent_1.2.3_amd64.deb",
       "sha256": "<computed>",
       "size_bytes": 12345678
     }
@@ -183,7 +183,7 @@ Use `aws s3` CLI with `--endpoint-url` pointed at R2. No AWS S3 bucket is create
 |---|---|---|
 | `R2_ACCESS_KEY_ID` | publish job, backend deploy | R2 S3-compatible access key |
 | `R2_SECRET_ACCESS_KEY` | publish job, backend deploy | R2 S3-compatible secret key |
-| `R2_BUCKET` | publish job, backend deploy | Bucket name (e.g. `tabbyrdp-releases`) |
+| `R2_BUCKET` | publish job, backend deploy | Bucket name (e.g. `tabbywebrtc-releases`) |
 | `R2_ACCOUNT_ID` | publish job, backend deploy | Cloudflare account ID for endpoint URL |
 | `DEV_REST_URL` | README stub | Dev REST API base URL (trailing slash optional) |
 | `PROD_REST_URL` | README prod section (future) | Prod REST API base URL |
@@ -197,7 +197,7 @@ Add these to the secrets table in `cicd/01-pipeline.md` when that spec is next u
 Create `README.md` at the project root with a dev download section using API Gateway proxy URLs (not direct R2 links):
 
 ```markdown
-# TabbyRDP
+# TabbyWebRTC
 
 Remote desktop streaming with a browser-based viewer and mobile auth key.
 
@@ -215,10 +215,10 @@ Latest installers are served via the dev API Gateway. Links always resolve to th
 
 Manifest: https://REPLACE_DEV_REST_URL/updates/manifest.json
 
-Replace `REPLACE_DEV_REST_URL` with the `RestEndpoint` CDK output from `TabbyRDPDev` after first deploy.
+Replace `REPLACE_DEV_REST_URL` with the `RestEndpoint` CDK output from `TabbyWebRTCDev` after first deploy.
 ```
 
-Prod section is out of scope until `TabbyRDPProd` is deployed. Add a commented placeholder block only.
+Prod section is out of scope until `TabbyWebRTCProd` is deployed. Add a commented placeholder block only.
 
 ---
 

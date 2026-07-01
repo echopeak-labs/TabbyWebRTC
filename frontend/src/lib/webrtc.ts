@@ -77,7 +77,7 @@ export async function applyBitrateCap(sender: RTCRtpSender, maxKbps: number): Pr
   await sender.setParameters(params)
 }
 
-const TAB_ID_KEY = 'tabbyrdp_tab_id'
+const TAB_ID_KEY = 'tabbywebrtc_tab_id'
 
 export function getTabId(): string {
   let id = sessionStorage.getItem(TAB_ID_KEY)

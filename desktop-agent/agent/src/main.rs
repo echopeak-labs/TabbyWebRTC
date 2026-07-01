@@ -15,7 +15,7 @@ use agent::Agent;
 use config::{default_config_path, load_or_create};
 
 #[derive(Parser, Debug)]
-#[command(name = "tabbyrdp-agent", about = "TabbyRDP desktop agent")]
+#[command(name = "tabbywebrtc-agent", about = "TabbyWebRTC desktop agent")]
 struct Args {
     #[arg(long, value_name = "PATH")]
     config: Option<PathBuf>,

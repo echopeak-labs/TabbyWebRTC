@@ -23,7 +23,7 @@ export class DynamoDbTables extends Construct {
     const suffix = props.envName;
 
     this.connectionsTable = new Table(this, 'ConnectionsTable', {
-      tableName: `tabbyrdp-connections-${suffix}`,
+      tableName: `tabbywebrtc-connections-${suffix}`,
       partitionKey: { name: 'connectionId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'TTL',
@@ -41,7 +41,7 @@ export class DynamoDbTables extends Construct {
     });
 
     this.pendingSessionsTable = new Table(this, 'PendingSessionsTable', {
-      tableName: `tabbyrdp-pending-sessions-${suffix}`,
+      tableName: `tabbywebrtc-pending-sessions-${suffix}`,
       partitionKey: { name: 'pendingSessionId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiresAt',
@@ -49,7 +49,7 @@ export class DynamoDbTables extends Construct {
     });
 
     this.agentsTable = new Table(this, 'AgentsTable', {
-      tableName: `tabbyrdp-agents-${suffix}`,
+      tableName: `tabbywebrtc-agents-${suffix}`,
       partitionKey: { name: 'agentId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'TTL',
@@ -62,13 +62,13 @@ export class DynamoDbTables extends Construct {
     });
 
     this.sourceLocksTable = new Table(this, 'SourceLocksTable', {
-      tableName: `tabbyrdp-source-locks-${suffix}`,
+      tableName: `tabbywebrtc-source-locks-${suffix}`,
       partitionKey: { name: 'sourceId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'TTL',
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    Tags.of(this).add('project', 'tabbyrdp');
+    Tags.of(this).add('project', 'tabbywebrtc');
   }
 }

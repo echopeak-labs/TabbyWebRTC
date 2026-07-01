@@ -61,8 +61,8 @@ export async function downloadArtifact(platform: string): Promise<APIGatewayProx
   const headers: Record<string, string> = {
     'Content-Type': contentTypeForFilename(artifact.filename),
     'Content-Disposition': `attachment; filename="${artifact.filename}"`,
-    'X-TabbyRDP-Version': manifest.version,
-    'X-TabbyRDP-SHA256': artifact.sha256,
+    'X-TabbyWebRTC-Version': manifest.version,
+    'X-TabbyWebRTC-SHA256': artifact.sha256,
   };
 
   if (artifact.size_bytes > 0) {

@@ -1,4 +1,4 @@
-@startuml tabbyrdp-components-high-level
+@startuml tabbywebrtc-components-high-level
 skinparam backgroundColor #FAFAFA
 skinparam shadowing false
 skinparam roundcorner 12
@@ -6,14 +6,14 @@ skinparam defaultFontName Helvetica
 skinparam packageStyle rectangle
 skinparam componentStyle rectangle
 
-title TabbyRDP — High-Level System Architecture\n<size:12><i>AWS carries signaling only. Video and input are always P2P between browser and agent.</i></size>
+title TabbyWebRTC — High-Level System Architecture\n<size:12><i>AWS carries signaling only. Video and input are always P2P between browser and agent.</i></size>
 
 actor "User" as user
 
 package "Client Tier" #E8F4FD {
   component "Desktop Viewer\n(React PWA)" as viewer <<SPA>>
   component "Mobile Key\n(React PWA)" as mobile <<SPA>>
-  component "Desktop Agent\n(tabbyrdp-agent)" as agent <<Rust>>
+  component "Desktop Agent\n(tabbywebrtc-agent)" as agent <<Rust>>
 }
 
 package "Identity" #FFF3E0 {
@@ -110,7 +110,7 @@ end note
 
 note bottom of mobile
   **Mobile Key** never opens WebRTC.
-  Holds Clerk JWT only; triggers TabbyRDP JWT issuance for desktop tab.
+  Holds Clerk JWT only; triggers TabbyWebRTC JWT issuance for desktop tab.
 end note
 
 note bottom of agent

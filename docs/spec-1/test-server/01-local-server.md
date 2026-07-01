@@ -4,7 +4,7 @@
 
 Defines a standalone NestJS server at the repository root (`testServer/`) that replicates the production backend APIs required for local end-to-end testing of the desktop agent, browser viewer, and mobile auth flow — without AWS deployment, DynamoDB, or SAM.
 
-**In scope:** QR session auth, Clerk JWT validation, TabbyRDP/agent JWT issuance, WebSocket signaling (SDP/ICE relay, agent registration, source locks), and TURN credential generation.
+**In scope:** QR session auth, Clerk JWT validation, TabbyWebRTC/agent JWT issuance, WebSocket signaling (SDP/ICE relay, agent registration, source locks), and TURN credential generation.
 
 **Out of scope:** Update distribution (`backend/05`), video relay, DynamoDB, API Gateway, Lambda, Cloudflare, and production secrets management.
 
@@ -12,7 +12,7 @@ Defines a standalone NestJS server at the repository root (`testServer/`) that r
 
 ## Purpose
 
-Developers and QA need to exercise the full TabbyRDP user flow on a LAN:
+Developers and QA need to exercise the full TabbyWebRTC user flow on a LAN:
 
 1. Desktop viewer shows QR on a laptop.
 2. Mobile phone on the same Wi‑Fi scans QR, approves with Clerk + biometrics.
@@ -56,8 +56,8 @@ Behavior and message shapes must match `backend/02-signaling-server.md` and `bac
 |---|---|---|---|
 | `POST` | `/auth/approve` | Clerk JWT | `backend/04` |
 | `POST` | `/agents/pair` | Clerk JWT | `backend/04` |
-| `GET` | `/agents` | TabbyRDP JWT | `backend/04` |
-| `GET` | `/turn-credentials` | TabbyRDP JWT | `backend/02`, `backend/04` |
+| `GET` | `/agents` | TabbyWebRTC JWT | `backend/04` |
+| `GET` | `/turn-credentials` | TabbyWebRTC JWT | `backend/02`, `backend/04` |
 
 ### WebSocket
 
@@ -128,7 +128,7 @@ The server must be reachable from other devices on the LAN (mobile phone, tablet
 On startup, resolve the primary non-loopback IPv4 address and log:
 
 ```
-TabbyRDP test server listening on:
+TabbyWebRTC test server listening on:
   REST/WS  http://192.168.1.42:3001  ws://192.168.1.42:3001
   (also http://127.0.0.1:3001 for localhost)
 ```
@@ -174,7 +174,7 @@ Agent HTTP thumbnail server already binds `0.0.0.0:7700` per `desktop-agent/01`.
 | `LAN_IP` | Optional override for advertised address |
 | `CLERK_JWKS_URL` | Clerk JWKS endpoint |
 | `CLERK_ISSUER` | Clerk JWT issuer |
-| `TABBYRDP_JWT_SECRET` | HS256 secret for session tokens |
+| `TABBYWEBRTC_JWT_SECRET` | HS256 secret for session tokens |
 | `TURN_SECRET` | HMAC secret for TURN REST credentials |
 | `TURN_URLS` | Comma-separated TURN URLs (e.g. `turn:localhost:3478`) |
 

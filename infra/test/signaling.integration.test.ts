@@ -16,17 +16,17 @@ beforeAll(async () => {
   process.env.AGENTS_TABLE = 'agents';
   process.env.SOURCE_LOCKS_TABLE = 'source-locks';
   process.env.WS_CALLBACK_URL = 'https://example.execute-api.local';
-  process.env.TABBYRDP_JWT_SECRET = 'test-tabbyrdp-secret';
+  process.env.TABBYWEBRTC_JWT_SECRET = 'test-tabbywebrtc-secret';
 
   const router = await import('../lambda/src/router');
   const sendModule = await import('../lambda/src/lib/send-to-connection');
   const jwt = await import('../lambda/src/lib/jwt');
   dispatchMessage = router.dispatchMessage;
   resetManagementClient = sendModule.resetManagementClient;
-  issueTabbyRDPToken = jwt.issueTabbyRDPToken;
+  issueTabbyWebRTCToken = jwt.issueTabbyWebRTCToken;
 });
 
-let issueTabbyRDPToken: (userId: string, agentId: string) => Promise<string>;
+let issueTabbyWebRTCToken: (userId: string, agentId: string) => Promise<string>;
 
 beforeEach(() => {
   ddbMock.reset();
@@ -41,7 +41,7 @@ describe('signaling round-trip', () => {
     const agentId = 'agent-1';
     const sourceId = 'display-1';
     const tabId = 'tab-1';
-    const sessionToken = await issueTabbyRDPToken('user-1', agentId);
+    const sessionToken = await issueTabbyWebRTCToken('user-1', agentId);
 
     ddbMock.on(GetCommand).callsFake((input) => {
       if (input.TableName === 'connections' && input.Key?.connectionId === browserConnectionId) {
@@ -117,7 +117,7 @@ describe('signaling round-trip', () => {
   it('returns SOURCE_IN_USE when source is locked by another tab', async () => {
     const browserConnectionId = 'browser-conn';
     const agentId = 'agent-1';
-    const sessionToken = await issueTabbyRDPToken('user-1', agentId);
+    const sessionToken = await issueTabbyWebRTCToken('user-1', agentId);
 
     ddbMock.on(GetCommand).callsFake((input) => {
       if (input.TableName === 'connections') {

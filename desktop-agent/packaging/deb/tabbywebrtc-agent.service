@@ -1,11 +1,11 @@
 [Unit]
-Description=TabbyRDP desktop streaming agent
+Description=TabbyWebRTC desktop streaming agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/tabbyrdp-agent
+ExecStart=/usr/bin/tabbywebrtc-agent
 Restart=on-failure
 RestartSec=5
 

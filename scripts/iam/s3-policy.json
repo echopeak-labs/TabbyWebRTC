@@ -28,10 +28,10 @@
         "s3:PutBucketOwnershipControls"
       ],
       "Resource": [
-        "arn:aws:s3:::tabbyrdp-web-dev",
-        "arn:aws:s3:::tabbyrdp-web-prod",
-        "arn:aws:s3:::tabbyrdpdev-*",
-        "arn:aws:s3:::tabbyrdpprod-*",
+        "arn:aws:s3:::tabbywebrtc-web-dev",
+        "arn:aws:s3:::tabbywebrtc-web-prod",
+        "arn:aws:s3:::tabbywebrtcdev-*",
+        "arn:aws:s3:::tabbywebrtcprod-*",
         "arn:aws:s3:::cdk-*"
       ]
     },
@@ -47,10 +47,10 @@
         "s3:ListBucketVersions"
       ],
       "Resource": [
-        "arn:aws:s3:::tabbyrdp-web-dev/*",
-        "arn:aws:s3:::tabbyrdp-web-prod/*",
-        "arn:aws:s3:::tabbyrdpdev-*/*",
-        "arn:aws:s3:::tabbyrdpprod-*/*",
+        "arn:aws:s3:::tabbywebrtc-web-dev/*",
+        "arn:aws:s3:::tabbywebrtc-web-prod/*",
+        "arn:aws:s3:::tabbywebrtcdev-*/*",
+        "arn:aws:s3:::tabbywebrtcprod-*/*",
         "arn:aws:s3:::cdk-*/*"
       ]
     },

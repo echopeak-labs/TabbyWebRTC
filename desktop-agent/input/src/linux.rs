@@ -189,8 +189,8 @@ fn screen_size() -> (i32, i32) {
 impl LinuxInjector {
     pub fn new() -> anyhow::Result<Self> {
         let (screen_width, screen_height) = screen_size();
-        let keyboard = UInputDevice::open("tabbyrdp-keyboard", setup_keyboard)?;
-        let mouse = UInputDevice::open("tabbyrdp-mouse", |fd| {
+        let keyboard = UInputDevice::open("tabbywebrtc-keyboard", setup_keyboard)?;
+        let mouse = UInputDevice::open("tabbywebrtc-mouse", |fd| {
             setup_mouse(fd, screen_width, screen_height)
         })?;
         Ok(Self {

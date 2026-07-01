@@ -1,4 +1,4 @@
-# TabbyRDP — Agent Task Lists
+# TabbyWebRTC — Agent Task Lists
 
 Each section below corresponds to a spec file in `docs/spec-1/`. Tasks are ordered for sequential execution within a spec. Check the `agents.md` dependency graph before starting any domain.
 
@@ -123,7 +123,7 @@ Use `[ ]` / `[x]` to track individual task completion.
 - [x] Initialize CDK TypeScript project in `infra/` with `cdk init app --language typescript`
 - [x] Create `lib/constructs/dynamodb-tables.ts`: define all 4 DynamoDB tables with correct keys, GSIs, TTL, and PAY_PER_REQUEST
 - [x] Create `lib/constructs/iam-roles.ts`: Lambda execution role with table grants
-- [x] Tag all CDK resources with `{ project: 'tabbyrdp' }` via `Tags.of(this).add(...)`
+- [x] Tag all CDK resources with `{ project: 'tabbywebrtc' }` via `Tags.of(this).add(...)`
 - [x] Verify `cdk synth` completes without errors
 - [x] Configure `cdk.json` with `env=dev` / `env=prod` context switching
 
@@ -155,7 +155,7 @@ Use `[ ]` / `[x]` to track individual task completion.
 - [x] Add `CfnOutput` for `WsEndpoint` and `RestEndpoint`
 - [x] Implement multi-environment context switching (`env=dev` vs `env=prod`) in stack
 - [ ] Run `cdk diff` against dev account before first deploy
-- [ ] Run `cdk deploy TabbyRDPDev` to validate stack deploys cleanly
+- [ ] Run `cdk deploy TabbyWebRTCDev` to validate stack deploys cleanly
 
 ---
 
@@ -163,8 +163,8 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 - [x] Install `jose` and `@clerk/backend` packages in Lambda bundle
 - [x] Implement `verifyClerkJwt(token)` using `jose.createRemoteJWKSet` against Clerk JWKS URL
-- [x] Implement `verifyTabbyRDPToken(token)` using HS256 + `TABBYRDP_JWT_SECRET`
-- [x] Create `lambda/src/handlers/auth.ts`: implement `AUTH_APPROVE` flow (verify Clerk JWT, consume pendingSessionId, issue TabbyRDP JWT, send `AUTH_APPROVED` to browser)
+- [x] Implement `verifyTabbyWebRTCToken(token)` using HS256 + `TABBYWEBRTC_JWT_SECRET`
+- [x] Create `lambda/src/handlers/auth.ts`: implement `AUTH_APPROVE` flow (verify Clerk JWT, consume pendingSessionId, issue TabbyWebRTC JWT, send `AUTH_APPROVED` to browser)
 - [x] Implement QR session creation in `$connect` handler: generate UUID pendingSessionId, store in DynamoDB, send `SESSION_PENDING`
 - [x] Implement QR refresh: handle `REFRESH_SESSION` message → rotate pendingSessionId
 - [x] Implement `POST /agents/pair` Lambda handler: verify Clerk JWT, store agent record, issue agent JWT (1-year)
@@ -179,7 +179,7 @@ Use `[ ]` / `[x]` to track individual task completion.
 
 - [x] Create `.github/workflows/pr-check.yml`: lint + typecheck + build for frontend, backend, and agent; cargo clippy + test
 - [x] Create `.github/workflows/frontend.yml`: `npm ci` → `npm run build` with Vite env vars → `wrangler pages deploy`
-- [x] Create `.github/workflows/backend.yml`: `npm ci` → `npx cdk deploy TabbyRDPProd` with OIDC auth
+- [x] Create `.github/workflows/backend.yml`: `npm ci` → `npx cdk deploy TabbyWebRTCProd` with OIDC auth
 - [x] Create `.github/workflows/desktop-agent.yml`: matrix build for all 5 platform/arch targets; upload artifacts; create GitHub Release on tag
 - [ ] Add all required GitHub Secrets to the repository (see spec secrets reference table)
 - [ ] Test PR check workflow on a feature branch
@@ -196,9 +196,9 @@ Use `[ ]` / `[x]` to track individual task completion.
 - [x] Create `scripts/dev-frontend.sh`: Vite dev server with local backend env vars
 - [x] Create `scripts/bootstrap-aws.sh`: CDK bootstrap + OIDC provider creation + deploy IAM role
 - [x] Create `scripts/provision-turn.sh`: SSH-based CoTURN install and config on target VPS
-- [x] Create `scripts/rotate-secrets.sh`: regenerate `TABBYRDP_JWT_SECRET` and update GitHub Secrets via `gh` CLI
+- [x] Create `scripts/rotate-secrets.sh`: regenerate `TABBYWEBRTC_JWT_SECRET` and update GitHub Secrets via `gh` CLI
 - [x] Create `scripts/release.sh`: tag + push to trigger release workflow
-- [x] Create `scripts/check-costs.sh`: AWS Cost Explorer query scoped to `project=tabbyrdp` tag
+- [x] Create `scripts/check-costs.sh`: AWS Cost Explorer query scoped to `project=tabbywebrtc` tag
 - [x] `chmod +x` all scripts
 - [x] Document prerequisite tools in `scripts/README` or inline help text (`--help`)
 - [x] Test `setup-dev.sh` on a clean machine (or Docker container)
@@ -277,7 +277,7 @@ Use `[ ]` / `[x]` to track individual task completion.
 - [x] Implement R2 S3 client helper with streaming get in `infra/lambda/src/lib/r2.ts`
 - [x] Implement manifest handler: read `{env}/manifest.json` from R2, return JSON with cache headers
 - [x] Implement download proxy handler: resolve platform from manifest, stream artifact from R2
-- [x] Wire `GET /updates/manifest.json` and `GET /downloads/{platform}` routes in `infra/lib/tabbyrdp-stack.ts`
+- [x] Wire `GET /updates/manifest.json` and `GET /downloads/{platform}` routes in `infra/lib/tabbywebrtc-stack.ts`
 - [x] Add `updatesFn` Lambda to `infra/lib/constructs/lambda-functions.ts` with R2 env vars
 - [x] Pass `UPDATE_ENV_PREFIX` from CDK `envName` prop into updates Lambda
 - [x] Add CDK outputs: `UpdateManifestUrl`, `DownloadBaseUrl`
@@ -334,7 +334,7 @@ Use `[ ]` / `[x]` to track individual task completion.
 ## desktop-agent/05-auto-update.md
 
 - [ ] Add `[updates]` config section (`enabled`, `base_url`, `channel`) to `config.rs`
-- [ ] Bake default `base_url` from `TABBYRDP_UPDATE_BASE_URL` at compile time
+- [ ] Bake default `base_url` from `TABBYWEBRTC_UPDATE_BASE_URL` at compile time
 - [ ] Implement `platform_key()` runtime detection mapping OS/arch to manifest keys
 - [ ] Implement `updater.rs` with `UpdateLoop` and random 2–4 h sleep interval
 - [ ] Implement manifest fetch and semver comparison against `CARGO_PKG_VERSION`

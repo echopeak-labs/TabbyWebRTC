@@ -89,7 +89,7 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-echo "Starting TabbyRDP local stack (LAN IP: ${LAN_IP})"
+echo "Starting TabbyWebRTC local stack (LAN IP: ${LAN_IP})"
 echo ""
 
 (
@@ -110,11 +110,11 @@ PIDS+=($!)
 ) &
 PIDS+=($!)
 
-AGENT_CONFIG="$(mktemp /tmp/tabbyrdp-agent-dev-XXXXXX.toml)"
+AGENT_CONFIG="$(mktemp /tmp/tabbywebrtc-agent-dev-XXXXXX.toml)"
 cat >"$AGENT_CONFIG" <<EOF
 [agent]
 id = "dev-local-agent"
-name = "TabbyRDP Dev Agent"
+name = "TabbyWebRTC Dev Agent"
 
 [signaling]
 url = "${WS_URL}"

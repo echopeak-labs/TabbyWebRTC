@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/stores/authStore'
 
-export const SESSION_TOKEN_KEY = 'tabbyrdp_token'
-export const SESSION_AGENT_KEY = 'tabbyrdp_agent_id'
+export const SESSION_TOKEN_KEY = 'tabbywebrtc_token'
+export const SESSION_AGENT_KEY = 'tabbywebrtc_agent_id'
 const CHANNEL_NAME = 'auth_sync'
 const SYNC_TIMEOUT_MS = 150
 

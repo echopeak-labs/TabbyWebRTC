@@ -11,7 +11,7 @@ let handleAuthApprove: (
   agentId: string,
 ) => Promise<{ statusCode: number; body: string }>;
 let handleRefreshSession: (connection: ConnectionRecord) => Promise<void>;
-let issueTabbyRDPToken: (userId: string, agentId: string) => Promise<string>;
+let issueTabbyWebRTCToken: (userId: string, agentId: string) => Promise<string>;
 let setJwksForTests: (jwks: ReturnType<typeof jose.createLocalJWKSet>) => void;
 
 beforeAll(async () => {
@@ -19,7 +19,7 @@ beforeAll(async () => {
   process.env.AGENTS_TABLE = 'agents';
   process.env.CONNECTIONS_TABLE = 'connections';
   process.env.WS_CALLBACK_URL = 'https://example.execute-api.local';
-  process.env.TABBYRDP_JWT_SECRET = 'test-tabbyrdp-secret';
+  process.env.TABBYWEBRTC_JWT_SECRET = 'test-tabbywebrtc-secret';
   process.env.CLERK_ISSUER = 'https://clerk.test';
 
   const auth = await import('../lambda/src/handlers/auth');
@@ -29,7 +29,7 @@ beforeAll(async () => {
     return { statusCode: result.statusCode, body: result.body ?? '' };
   };
   handleRefreshSession = auth.handleRefreshSession;
-  issueTabbyRDPToken = jwt.issueTabbyRDPToken;
+  issueTabbyWebRTCToken = jwt.issueTabbyWebRTCToken;
   setJwksForTests = jwt.setJwksForTests;
 });
 
@@ -130,7 +130,7 @@ describe('turn credentials handler', () => {
     process.env.TURN_URLS = 'turn:example.com:3478,turns:example.com:5349';
 
     const { handler } = await import('../lambda/src/handlers/turn');
-    const token = await issueTabbyRDPToken('user-1', 'agent-1');
+    const token = await issueTabbyWebRTCToken('user-1', 'agent-1');
 
     const result = (await handler(
       {
@@ -154,7 +154,7 @@ describe('turn credentials handler', () => {
 describe('agent REST handlers', () => {
   it('lists agents for the authenticated user', async () => {
     const { handler } = await import('../lambda/src/handlers/agent');
-    const token = await issueTabbyRDPToken('user-1', 'agent-1');
+    const token = await issueTabbyWebRTCToken('user-1', 'agent-1');
 
     ddbMock.on(QueryCommand).resolves({
       Items: [

@@ -1,11 +1,11 @@
-@startuml tabbyrdp-backend-infra
+@startuml tabbywebrtc-backend-infra
 skinparam backgroundColor #FAFAFA
 skinparam shadowing false
 skinparam roundcorner 10
 skinparam defaultFontName Helvetica
 skinparam nodeStyle rectangle
 
-title TabbyRDP — Backend & Cloud Infrastructure\n<size:12>CDK stack in infra/ · env=dev | env=prod context</size>
+title TabbyWebRTC — Backend & Cloud Infrastructure\n<size:12>CDK stack in infra/ · env=dev | env=prod context</size>
 
 cloud "Internet" {
   actor "Browser\n(desktop viewer)" as browser
@@ -14,14 +14,14 @@ cloud "Internet" {
 }
 
 node "Cloudflare" #FFF8E1 {
-  component "Cloudflare Pages\n----\nStatic React build\napp.tabbyrdp.com" as pages
+  component "Cloudflare Pages\n----\nStatic React build\napp.tabbywebrtc.com" as pages
   database "Cloudflare R2\n----\nenv/manifest.json\nenv/version/installers" as r2
 }
 
 node "AWS Account" #E8EAF6 {
 
   node "API Layer" #C5CAE9 {
-    component "API Gateway WebSocket\n----\nwss://signal.tabbyrdp.com\nRoutes: connect, disconnect, default\nIdle timeout: 10 min" as wsapi
+    component "API Gateway WebSocket\n----\nwss://signal.tabbywebrtc.com\nRoutes: connect, disconnect, default\nIdle timeout: 10 min" as wsapi
     component "API Gateway REST\n----\nGET /turn-credentials, /agents\nPOST /agents/pair, /auth/approve\nGET /updates/manifest.json\nGET /downloads/platform" as restapi
   }
 
@@ -31,7 +31,7 @@ node "AWS Account" #E8EAF6 {
 
   node "Data" #C8E6C9 {
     database "DynamoDB (PAY_PER_REQUEST)\n----\nconnections, pending-sessions\nagents, source-locks" as ddb
-    component "Secrets Manager\n----\nTABBYRDP_JWT_SECRET\nCLERK JWKS / ISSUER\nTURN_SECRET / TURN_URLS\nR2 credentials" as secrets
+    component "Secrets Manager\n----\nTABBYWEBRTC_JWT_SECRET\nCLERK JWKS / ISSUER\nTURN_SECRET / TURN_URLS\nR2 credentials" as secrets
   }
 
   component "IAM — Lambda execution role\n----\nDynamoDB read/write\nexecute-api:ManageConnections\nS3-compatible R2 access" as iam
@@ -83,8 +83,8 @@ end note
 
 legend right
   | Resource | Tag |
-  | All CDK | project=tabbyrdp |
-  | Stacks | TabbyRDPDev / TabbyRDPProd |
+  | All CDK | project=tabbywebrtc |
+  | Stacks | TabbyWebRTCDev / TabbyWebRTCProd |
   | Cost model | $0 at free tier for signaling |
 endlegend
 

@@ -14,7 +14,7 @@ Two-column grid layout (full-height, scrollable).
 
 ```
 +--------------------------------------------------+
-| TopBar: "TabbyRDP" | Agent: "Home Desktop" | ...  |
+| TopBar: "TabbyWebRTC" | Agent: "Home Desktop" | ...  |
 +------------------------+-------------------------+
 |                        |                         |
 |  Displays (left col)   |  Applications (right)   |
@@ -156,7 +156,7 @@ Floats at the bottom of the viewport. Semi-transparent dark background. Amber ac
 Persistent across `LaunchpadPage` and `StreamPage`.
 
 ```
-TabbyRDP   [Agent: "Home Desktop" ▾]   [Connection: LAN / WAN badge]   [Latency: 12 ms]   [Avatar ▾]
+TabbyWebRTC   [Agent: "Home Desktop" ▾]   [Connection: LAN / WAN badge]   [Latency: 12 ms]   [Avatar ▾]
 ```
 
 - Agent selector dropdown: lists all registered agents. Switching agents clears stream state and reloads launchpad.

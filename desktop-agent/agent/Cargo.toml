@@ -1,11 +1,11 @@
 [package]
-name = "tabbyrdp-agent"
+name = "tabbywebrtc-agent"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "tabbyrdp-agent"
+name = "tabbywebrtc-agent"
 path = "src/main.rs"
 
 [dependencies]

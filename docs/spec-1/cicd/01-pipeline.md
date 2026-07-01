@@ -119,7 +119,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=tabbyrdp
+          command: pages deploy dist --project-name=tabbywebrtc
           workingDirectory: frontend
 ```
 
@@ -127,7 +127,7 @@ jobs:
 
 | Variable | Description |
 |---|---|
-| `VITE_WS_URL` | WebSocket signaling endpoint (`wss://signal.tabbyrdp.com/prod`) |
+| `VITE_WS_URL` | WebSocket signaling endpoint (`wss://signal.tabbywebrtc.com/prod`) |
 | `VITE_REST_URL` | REST API base URL |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk public key |
 
@@ -167,13 +167,13 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-east-1
       - run: npm ci
-      - run: npx cdk deploy TabbyRDPProd --require-approval never --context env=prod
+      - run: npx cdk deploy TabbyWebRTCProd --require-approval never --context env=prod
         env:
           CLERK_JWKS_URL: ${{ secrets.CLERK_JWKS_URL }}
           CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
           TURN_SECRET: ${{ secrets.TURN_SECRET }}
           TURN_URLS: ${{ secrets.TURN_URLS }}
-          TABBYRDP_JWT_SECRET: ${{ secrets.TABBYRDP_JWT_SECRET }}
+          TABBYWEBRTC_JWT_SECRET: ${{ secrets.TABBYWEBRTC_JWT_SECRET }}
 ```
 
 ### AWS Authentication
@@ -186,7 +186,7 @@ IAM role trust policy:
   "Principal": { "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com" },
   "Condition": {
     "StringEquals": {
-      "token.actions.githubusercontent.com:sub": "repo:<ORG>/TabbyRDP:ref:refs/heads/main"
+      "token.actions.githubusercontent.com:sub": "repo:<ORG>/TabbyWebRTC:ref:refs/heads/main"
     }
   }
 }
@@ -215,19 +215,19 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: tabbyrdp-agent-linux-x86_64
+            artifact: tabbywebrtc-agent-linux-x86_64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            artifact: tabbyrdp-agent-linux-aarch64
+            artifact: tabbywebrtc-agent-linux-aarch64
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact: tabbyrdp-agent-macos-x86_64
+            artifact: tabbywebrtc-agent-macos-x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: tabbyrdp-agent-macos-aarch64
+            artifact: tabbywebrtc-agent-macos-aarch64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: tabbyrdp-agent-windows-x86_64.exe
+            artifact: tabbywebrtc-agent-windows-x86_64.exe
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -249,7 +249,7 @@ jobs:
       - name: Rename binary
         shell: bash
         run: |
-          SRC=target/${{ matrix.target }}/release/tabbyrdp-agent
+          SRC=target/${{ matrix.target }}/release/tabbywebrtc-agent
           [[ "${{ matrix.os }}" == "windows-latest" ]] && SRC="${SRC}.exe"
           cp "$SRC" "${{ matrix.artifact }}"
       - uses: actions/upload-artifact@v4
@@ -289,7 +289,7 @@ jobs:
 | `CLERK_ISSUER` | backend.yml | Clerk issuer URL |
 | `TURN_SECRET` | backend.yml | HMAC secret for TURN credentials |
 | `TURN_URLS` | backend.yml | Comma-separated TURN server URLs |
-| `TABBYRDP_JWT_SECRET` | backend.yml | HS256 secret for session JWTs |
+| `TABBYWEBRTC_JWT_SECRET` | backend.yml | HS256 secret for session JWTs |
 
 ---
 

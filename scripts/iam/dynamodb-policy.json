@@ -18,14 +18,14 @@
         "dynamodb:UntagResource"
       ],
       "Resource": [
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-dev",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-prod",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-pending-sessions-dev",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-pending-sessions-prod",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-dev",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-prod",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-source-locks-dev",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-source-locks-prod"
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-connections-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-connections-prod",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-pending-sessions-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-pending-sessions-prod",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-agents-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-agents-prod",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-source-locks-dev",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-source-locks-prod"
       ]
     },
     {
@@ -36,10 +36,10 @@
         "dynamodb:DescribeTable"
       ],
       "Resource": [
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-dev/index/*",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-connections-prod/index/*",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-dev/index/*",
-        "arn:aws:dynamodb:us-east-1:*:table/tabbyrdp-agents-prod/index/*"
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-connections-dev/index/*",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-connections-prod/index/*",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-agents-dev/index/*",
+        "arn:aws:dynamodb:us-east-1:*:table/tabbywebrtc-agents-prod/index/*"
       ]
     }
   ]

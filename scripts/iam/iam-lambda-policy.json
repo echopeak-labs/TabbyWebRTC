@@ -21,8 +21,8 @@
         "iam:CreateServiceLinkedRole"
       ],
       "Resource": [
-        "arn:aws:iam::*:role/TabbyRDPDev-*",
-        "arn:aws:iam::*:role/TabbyRDPProd-*",
+        "arn:aws:iam::*:role/TabbyWebRTCDev-*",
+        "arn:aws:iam::*:role/TabbyWebRTCProd-*",
         "arn:aws:iam::*:role/cdk-*",
         "arn:aws:iam::*:role/aws-service-role/*"
       ]
@@ -48,8 +48,8 @@
         "lambda:GetPolicy"
       ],
       "Resource": [
-        "arn:aws:lambda:us-east-1:*:function:TabbyRDPDev-*",
-        "arn:aws:lambda:us-east-1:*:function:TabbyRDPProd-*"
+        "arn:aws:lambda:us-east-1:*:function:TabbyWebRTCDev-*",
+        "arn:aws:lambda:us-east-1:*:function:TabbyWebRTCProd-*"
       ]
     }
   ]

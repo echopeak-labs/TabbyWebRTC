@@ -22,7 +22,7 @@ export function MobileSignInPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <h1 className="mb-2 text-3xl font-bold text-primary">TabbyRDP</h1>
+      <h1 className="mb-2 text-3xl font-bold text-primary">TabbyWebRTC</h1>
       <p className="mb-8 text-textMuted">Sign in to continue</p>
       <div className="w-full max-w-sm">
         <SignIn

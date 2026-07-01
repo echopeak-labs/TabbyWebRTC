@@ -210,7 +210,7 @@ export function ConnectPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">TabbyRDP</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary">TabbyWebRTC</CardTitle>
           <CardDescription className={statusClass}>{statusText}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">

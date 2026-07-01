@@ -48,7 +48,7 @@ export function MobileAgentsPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold text-primary">TabbyRDP</h1>
+        <h1 className="text-lg font-semibold text-primary">TabbyWebRTC</h1>
         <Button
           variant="ghost"
           className="min-h-11 min-w-11"

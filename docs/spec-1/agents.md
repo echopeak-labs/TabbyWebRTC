@@ -1,4 +1,4 @@
-# TabbyRDP — Agentic Orchestration File
+# TabbyWebRTC — Agentic Orchestration File
 
 This file is the single source of truth for tracking the implementation status of every spec in `docs/spec-1/`. Each agent working on this project must update the `status` field of the spec it is implementing before starting work and again when complete.
 
@@ -39,9 +39,9 @@ This file is the single source of truth for tracking the implementation status o
 | Spec File | Owner Agent | Status | Notes |
 |---|---|---|---|
 | `backend/01-architecture.md` | `agent-backend-01` | `review` | CDK scaffold in `infra/`; 4 DynamoDB tables + Lambda IAM role; `cdk synth` verified for dev/prod |
-| `backend/02-signaling-server.md` | `agent-singal-server` | `review` | WebSocket connect/disconnect/router in `infra/lambda/src/`; agent register/heartbeat, SUBSCRIBE/UNSUBSCRIBE locks, SDP/ICE relay; `sendToConnection` with GoneException cleanup; 22 Jest tests pass; SUBSCRIBE now validates TabbyRDP JWT via backend/04 |
+| `backend/02-signaling-server.md` | `agent-singal-server` | `review` | WebSocket connect/disconnect/router in `infra/lambda/src/`; agent register/heartbeat, SUBSCRIBE/UNSUBSCRIBE locks, SDP/ICE relay; `sendToConnection` with GoneException cleanup; 22 Jest tests pass; SUBSCRIBE now validates TabbyWebRTC JWT via backend/04 |
 | `backend/03-aws-infra.md` | `agent-aws-infra` | `review` | WebSocket + REST APIs wired in CDK; 4 Lambda stubs for bundling; `cdk synth` OK for dev/prod; `cdk diff`/`deploy` blocked until AWS credentials configured |
-| `backend/04-auth-service.md` | `agent-auth-service` | `review` | Clerk JWKS + TabbyRDP/agent JWT via `jose`; QR `SESSION_PENDING`/`REFRESH_SESSION`; `POST /auth/approve`, `POST /agents/pair`, `GET /agents`, `GET /turn-credentials`; agents table TTL added; 22 Jest tests pass; E2E dev deploy blocked until AWS credentials configured; agent WebSocket auth uses `?token=` query param (API GW v2 has no connect headers) |
+| `backend/04-auth-service.md` | `agent-auth-service` | `review` | Clerk JWKS + TabbyWebRTC/agent JWT via `jose`; QR `SESSION_PENDING`/`REFRESH_SESSION`; `POST /auth/approve`, `POST /agents/pair`, `GET /agents`, `GET /turn-credentials`; agents table TTL added; 22 Jest tests pass; E2E dev deploy blocked until AWS credentials configured; agent WebSocket auth uses `?token=` query param (API GW v2 has no connect headers) |
 | `backend/05-update-distribution.md` | `agent-update-api` | `review` | `updatesFn` Lambda + R2 lib; `GET /updates/manifest.json` + `GET /downloads/{platform}`; dev/prod `UPDATE_ENV_PREFIX`; 12 Jest tests; E2E curl verify blocked until R2 secrets + deploy |
 
 **Backend Dependencies:**
@@ -217,9 +217,9 @@ Within a wave, do not start a spec whose dependencies are still `not-started` or
 | `frontend/05` | `frontend/src/pages/desktop/LaunchpadPage.tsx`, `frontend/src/pages/desktop/StreamPage.tsx`, `frontend/src/components/launchpad/`, `frontend/src/components/layout/` |
 | `backend/01` | `infra/lib/constructs/dynamodb-tables.ts`, `infra/lib/constructs/iam-roles.ts` |
 | `backend/02` | `infra/lambda/src/` (except handlers wired only in `03`) |
-| `backend/03` | `infra/lib/tabbyrdp-stack.ts`, `infra/lib/constructs/websocket-api.ts`, `infra/lib/constructs/lambda-functions.ts` |
+| `backend/03` | `infra/lib/tabbywebrtc-stack.ts`, `infra/lib/constructs/websocket-api.ts`, `infra/lib/constructs/lambda-functions.ts` |
 | `backend/04` | `infra/lambda/src/handlers/auth.ts`, `infra/lambda/src/handlers/turn.ts`, `infra/lambda/src/handlers/agent.ts` |
-| `backend/05` | `infra/lib/tabbyrdp-stack.ts`, `infra/lib/constructs/lambda-functions.ts`, `infra/lambda/src/handlers/updates.ts`, `infra/lambda/src/lib/r2.ts` |
+| `backend/05` | `infra/lib/tabbywebrtc-stack.ts`, `infra/lib/constructs/lambda-functions.ts`, `infra/lambda/src/handlers/updates.ts`, `infra/lambda/src/lib/r2.ts` |
 | `desktop-agent/01` | `desktop-agent/agent/`, `desktop-agent/Cargo.toml` |
 | `desktop-agent/02` | `desktop-agent/capture/` |
 | `desktop-agent/03` | `desktop-agent/input/` |

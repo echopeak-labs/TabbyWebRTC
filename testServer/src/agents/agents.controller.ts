@@ -3,7 +3,7 @@ import {
   extractBearerToken,
   issueAgentJwt,
   verifyClerkJwt,
-  verifyTabbyRDPToken,
+  verifyTabbyWebRTCToken,
 } from '../shared/jwt';
 import { AgentsService } from '../shared/agents.service';
 
@@ -19,7 +19,7 @@ export class AgentsController {
     }
 
     try {
-      const payload = await verifyTabbyRDPToken(token);
+      const payload = await verifyTabbyWebRTCToken(token);
       const userId = payload.sub!;
       const agentList = this.agents.listAgentsByUserId(userId);
 

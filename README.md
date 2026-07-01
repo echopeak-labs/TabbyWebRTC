@@ -1,10 +1,10 @@
-# TabbyRDP
+# TabbyWebRTC
 
 Stream your desktop displays and individual application windows to a browser tab over WebRTC — with near-native keyboard and mouse control, mobile-device authentication, and cost-conscious cloud infrastructure.
 
 ## What it does
 
-TabbyRDP pairs a lightweight **desktop agent** (Rust) with a **browser-based viewer** (React). After you authenticate with your phone, the launchpad shows live thumbnails of each display alongside a scrollable list of capturable apps. Pick a source, open a tab, and interact as if you were sitting at the machine.
+TabbyWebRTC pairs a lightweight **desktop agent** (Rust) with a **browser-based viewer** (React). After you authenticate with your phone, the launchpad shows live thumbnails of each display alongside a scrollable list of capturable apps. Pick a source, open a tab, and interact as if you were sitting at the machine.
 
 - **Display and per-app capture** — stream full monitors or individual application framebuffers
 - **Mobile auth key** — sign in and approve sessions from your phone (QR scan + biometric confirm)
@@ -89,7 +89,7 @@ Latest dev installers are served via the API Gateway REST endpoint after the dev
 
 Manifest: `https://REPLACE_DEV_REST_URL/updates/manifest.json`
 
-Replace `REPLACE_DEV_REST_URL` with the `RestEndpoint` CDK output from `TabbyRDPDev` after first deploy.
+Replace `REPLACE_DEV_REST_URL` with the `RestEndpoint` CDK output from `TabbyWebRTCDev` after first deploy.
 
 ## Project scripts
 

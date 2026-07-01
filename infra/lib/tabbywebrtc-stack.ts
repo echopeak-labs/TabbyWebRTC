@@ -12,18 +12,18 @@ import { IamRoles } from './constructs/iam-roles';
 import { LambdaFunctions } from './constructs/lambda-functions';
 import { WebSocketApiConstruct } from './constructs/websocket-api';
 
-export interface TabbyRdpStackProps extends StackProps {
+export interface TabbyWebRtcStackProps extends StackProps {
   envName: 'dev' | 'prod';
 }
 
-export class TabbyRdpStack extends Stack {
+export class TabbyWebRtcStack extends Stack {
   public readonly tables: DynamoDbTables;
   public readonly roles: IamRoles;
 
-  constructor(scope: Construct, id: string, props: TabbyRdpStackProps) {
+  constructor(scope: Construct, id: string, props: TabbyWebRtcStackProps) {
     super(scope, id, props);
 
-    Tags.of(this).add('project', 'tabbyrdp');
+    Tags.of(this).add('project', 'tabbywebrtc');
 
     this.tables = new DynamoDbTables(this, 'Tables', { envName: props.envName });
     this.roles = new IamRoles(this, 'Roles', { tables: this.tables });
@@ -41,7 +41,7 @@ export class TabbyRdpStack extends Stack {
     });
 
     const restApi = new RestApi(this, 'RestApi', {
-      restApiName: `tabbyrdp-rest-${props.envName}`,
+      restApiName: `tabbywebrtc-rest-${props.envName}`,
       defaultCorsPreflightOptions: {
         allowOrigins: Cors.ALL_ORIGINS,
         allowMethods: ['GET', 'POST', 'OPTIONS'],

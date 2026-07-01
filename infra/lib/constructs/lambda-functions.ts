@@ -35,7 +35,7 @@ export class LambdaFunctions extends Construct {
       CLERK_ISSUER: envOrPlaceholder('CLERK_ISSUER', 'https://placeholder.clerk.accounts.dev'),
       TURN_SECRET: envOrPlaceholder('TURN_SECRET', 'placeholder-turn-secret'),
       TURN_URLS: envOrPlaceholder('TURN_URLS', 'turn:placeholder.example.com:3478'),
-      TABBYRDP_JWT_SECRET: envOrPlaceholder('TABBYRDP_JWT_SECRET', 'placeholder-jwt-secret'),
+      TABBYWEBRTC_JWT_SECRET: envOrPlaceholder('TABBYWEBRTC_JWT_SECRET', 'placeholder-jwt-secret'),
     };
 
     const bundling = { minify: true, sourceMap: false };
@@ -97,7 +97,7 @@ export class LambdaFunctions extends Construct {
       timeout: Duration.seconds(30),
       role: props.lambdaRole,
       environment: {
-        R2_BUCKET: envOrPlaceholder('R2_BUCKET', 'tabbyrdp-releases'),
+        R2_BUCKET: envOrPlaceholder('R2_BUCKET', 'tabbywebrtc-releases'),
         R2_ENDPOINT: envOrPlaceholder(
           'R2_ENDPOINT',
           'https://placeholder.r2.cloudflarestorage.com',
@@ -109,6 +109,6 @@ export class LambdaFunctions extends Construct {
       bundling,
     });
 
-    Tags.of(this).add('project', 'tabbyrdp');
+    Tags.of(this).add('project', 'tabbywebrtc');
   }
 }

@@ -18,7 +18,7 @@ import {
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
 import { execSync } from 'node:child_process';
 
-const ROLE_NAME = 'TabbyRDP_GH_actions';
+const ROLE_NAME = 'TabbyWebRTC_GH_actions';
 const OIDC_PROVIDER = 'token.actions.githubusercontent.com';
 const AWS_REGION = 'us-east-1';
 
@@ -26,18 +26,18 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const iamDir = join(scriptDir, 'iam');
 
 const POLICY_MANIFEST: { name: string; file: string }[] = [
-  { name: 'TabbyRDP-GH-CloudFormation', file: 'cloudformation-policy.json' },
-  { name: 'TabbyRDP-GH-S3', file: 's3-policy.json' },
-  { name: 'TabbyRDP-GH-CloudFront', file: 'cloudfront-policy.json' },
-  { name: 'TabbyRDP-GH-APIGateway', file: 'apigateway-policy.json' },
-  { name: 'TabbyRDP-GH-DynamoDB', file: 'dynamodb-policy.json' },
-  { name: 'TabbyRDP-GH-IAM-Lambda', file: 'iam-lambda-policy.json' },
-  { name: 'TabbyRDP-GH-Logs', file: 'logs-policy.json' },
+  { name: 'TabbyWebRTC-GH-CloudFormation', file: 'cloudformation-policy.json' },
+  { name: 'TabbyWebRTC-GH-S3', file: 's3-policy.json' },
+  { name: 'TabbyWebRTC-GH-CloudFront', file: 'cloudfront-policy.json' },
+  { name: 'TabbyWebRTC-GH-APIGateway', file: 'apigateway-policy.json' },
+  { name: 'TabbyWebRTC-GH-DynamoDB', file: 'dynamodb-policy.json' },
+  { name: 'TabbyWebRTC-GH-IAM-Lambda', file: 'iam-lambda-policy.json' },
+  { name: 'TabbyWebRTC-GH-Logs', file: 'logs-policy.json' },
 ];
 
 function loadTrustPolicy(accountId: string): string {
   const githubOrg = process.env.GITHUB_ORG;
-  const githubRepo = process.env.GITHUB_REPO ?? 'TabbyRDP';
+  const githubRepo = process.env.GITHUB_REPO ?? 'TabbyWebRTC';
   if (!githubOrg) {
     throw new Error('GITHUB_ORG environment variable is required');
   }
@@ -117,7 +117,7 @@ async function upsertManagedPolicy(
       new CreatePolicyCommand({
         PolicyName: policyName,
         PolicyDocument: document,
-        Description: `GitHub Actions deploy policy for TabbyRDP (${policyName})`,
+        Description: `GitHub Actions deploy policy for TabbyWebRTC (${policyName})`,
       }),
     );
     if (!created.Policy?.Arn) {
@@ -200,9 +200,9 @@ async function main(): Promise<void> {
       new CreateRoleCommand({
         RoleName: ROLE_NAME,
         AssumeRolePolicyDocument: trustPolicy,
-        Description: 'GitHub Actions OIDC role for TabbyRDP CDK deployment',
+        Description: 'GitHub Actions OIDC role for TabbyWebRTC CDK deployment',
         Tags: [
-          { Key: 'Project', Value: 'tabbyrdp' },
+          { Key: 'Project', Value: 'tabbywebrtc' },
           { Key: 'ManagedBy', Value: 'deploy-iam' },
         ],
       }),

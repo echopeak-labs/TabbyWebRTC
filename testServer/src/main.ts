@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port, host);
 
-  console.log('TabbyRDP test server listening on:');
+  console.log('TabbyWebRTC test server listening on:');
   console.log(`  REST/WS  http://${lanIp}:${port}  ws://${lanIp}:${port}`);
   console.log(`  (also http://127.0.0.1:${port} for localhost)`);
 }

@@ -8,7 +8,7 @@ import {
   extractBearerToken,
   issueAgentJwt,
   verifyClerkJwt,
-  verifyTabbyRDPToken,
+  verifyTabbyWebRTCToken,
 } from '../lib/jwt.js';
 
 function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
@@ -20,7 +20,7 @@ function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
 }
 
 async function handleListAgents(token: string): Promise<APIGatewayProxyResult> {
-  const payload = await verifyTabbyRDPToken(token);
+  const payload = await verifyTabbyWebRTCToken(token);
   const userId = payload.sub!;
   const agents = await listAgentsByUserId(userId);
 

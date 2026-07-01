@@ -27,12 +27,12 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "stage=prod" >> "$GITHUB_OUTPUT"
-            echo "stack_name=TabbyRDPProd" >> "$GITHUB_OUTPUT"
-            echo "dns_name=tabbyrdp" >> "$GITHUB_OUTPUT"
+            echo "stack_name=TabbyWebRTCProd" >> "$GITHUB_OUTPUT"
+            echo "dns_name=tabbywebrtc" >> "$GITHUB_OUTPUT"
           else
             echo "stage=dev" >> "$GITHUB_OUTPUT"
-            echo "stack_name=TabbyRDPDev" >> "$GITHUB_OUTPUT"
-            echo "dns_name=dev-tabbyrdp" >> "$GITHUB_OUTPUT"
+            echo "stack_name=TabbyWebRTCDev" >> "$GITHUB_OUTPUT"
+            echo "dns_name=dev-tabbywebrtc" >> "$GITHUB_OUTPUT"
           fi
 
   infra:
@@ -66,7 +66,7 @@ jobs:
           CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
           TURN_SECRET: ${{ secrets.TURN_SECRET }}
           TURN_URLS: ${{ secrets.TURN_URLS }}
-          TABBYRDP_JWT_SECRET: ${{ secrets.TABBYRDP_JWT_SECRET }}
+          TABBYWEBRTC_JWT_SECRET: ${{ secrets.TABBYWEBRTC_JWT_SECRET }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -107,8 +107,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           ROOT_DOMAIN: mikewheeler.dev
-          TABBYRDP_DNS_NAME: ${{ needs.resolve-env.outputs.dns_name }}
-          TABBYRDP_CF_DOMAIN: ${{ needs.infra.outputs.frontend_cf_domain }}
+          TABBYWEBRTC_DNS_NAME: ${{ needs.resolve-env.outputs.dns_name }}
+          TABBYWEBRTC_CF_DOMAIN: ${{ needs.infra.outputs.frontend_cf_domain }}
         run: bash scripts/update-cloudflare-dns.sh
 
   frontend:

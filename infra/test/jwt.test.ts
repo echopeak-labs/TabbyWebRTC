@@ -3,17 +3,17 @@ import {
   extractBearerToken,
   generateTurnCredential,
   issueAgentJwt,
-  issueTabbyRDPToken,
+  issueTabbyWebRTCToken,
   resetJwksCache,
   setJwksForTests,
   verifyAgentJwt,
   verifyClerkJwt,
-  verifyTabbyRDPToken,
+  verifyTabbyWebRTCToken,
 } from '../lambda/src/lib/jwt';
 
 describe('jwt helpers', () => {
   beforeAll(() => {
-    process.env.TABBYRDP_JWT_SECRET = 'test-tabbyrdp-secret';
+    process.env.TABBYWEBRTC_JWT_SECRET = 'test-tabbywebrtc-secret';
     process.env.CLERK_ISSUER = 'https://clerk.test';
   });
 
@@ -26,12 +26,12 @@ describe('jwt helpers', () => {
     expect(extractBearerToken('Basic abc')).toBeUndefined();
   });
 
-  it('issues and verifies TabbyRDP session tokens', async () => {
-    const token = await issueTabbyRDPToken('user-1', 'agent-1');
-    const payload = await verifyTabbyRDPToken(token);
+  it('issues and verifies TabbyWebRTC session tokens', async () => {
+    const token = await issueTabbyWebRTCToken('user-1', 'agent-1');
+    const payload = await verifyTabbyWebRTCToken(token);
     expect(payload.sub).toBe('user-1');
     expect(payload.agentId).toBe('agent-1');
-    expect(payload.iss).toBe('tabbyrdp');
+    expect(payload.iss).toBe('tabbywebrtc');
     expect(payload.jti).toBeDefined();
   });
 
@@ -40,11 +40,11 @@ describe('jwt helpers', () => {
     const payload = await verifyAgentJwt(token);
     expect(payload.sub).toBe('agent-1');
     expect(payload.userId).toBe('user-1');
-    expect(payload.iss).toBe('tabbyrdp-agent');
+    expect(payload.iss).toBe('tabbywebrtc-agent');
   });
 
-  it('rejects invalid TabbyRDP tokens', async () => {
-    await expect(verifyTabbyRDPToken('not-a-jwt')).rejects.toThrow();
+  it('rejects invalid TabbyWebRTC tokens', async () => {
+    await expect(verifyTabbyWebRTCToken('not-a-jwt')).rejects.toThrow();
   });
 
   it('verifies Clerk JWTs against a local JWKS', async () => {

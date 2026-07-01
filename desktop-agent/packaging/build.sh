@@ -15,23 +15,23 @@ mkdir -p "$STAGING"
 
 case "$PLATFORM_KEY" in
   linux-x86_64)
-    BIN="$ROOT/tabbyrdp-agent-linux-x86_64"
+    BIN="$ROOT/tabbywebrtc-agent-linux-x86_64"
     DEB_ARCH=amd64
   ;;
   linux-aarch64)
-    BIN="$ROOT/tabbyrdp-agent-linux-aarch64"
+    BIN="$ROOT/tabbywebrtc-agent-linux-aarch64"
     DEB_ARCH=arm64
   ;;
   macos-x86_64)
-    BIN="$ROOT/tabbyrdp-agent-macos-x86_64"
+    BIN="$ROOT/tabbywebrtc-agent-macos-x86_64"
     PKG_ARCH=x86_64
   ;;
   macos-aarch64)
-    BIN="$ROOT/tabbyrdp-agent-macos-aarch64"
+    BIN="$ROOT/tabbywebrtc-agent-macos-aarch64"
     PKG_ARCH=aarch64
   ;;
   windows-x86_64)
-    BIN="$ROOT/tabbyrdp-agent-windows-x86_64.exe"
+    BIN="$ROOT/tabbywebrtc-agent-windows-x86_64.exe"
     MSI_ARCH=x86_64
   ;;
   *)
@@ -47,9 +47,9 @@ fi
 
 case "$PLATFORM_KEY" in
   linux-*)
-    cp "$BIN" "$STAGING/tabbyrdp-agent"
-    chmod 755 "$STAGING/tabbyrdp-agent"
-    cp "$ROOT/packaging/deb/tabbyrdp-agent.service" "$STAGING/tabbyrdp-agent.service"
+    cp "$BIN" "$STAGING/tabbywebrtc-agent"
+    chmod 755 "$STAGING/tabbywebrtc-agent"
+    cp "$ROOT/packaging/deb/tabbywebrtc-agent.service" "$STAGING/tabbywebrtc-agent.service"
     cp "$ROOT/packaging/deb/postinstall.sh" "$STAGING/postinstall.sh"
     chmod 755 "$STAGING/postinstall.sh"
     export VERSION DEB_ARCH
@@ -59,10 +59,10 @@ case "$PLATFORM_KEY" in
       cd "$STAGING"
       nfpm pkg --packager deb --config nfpm.yaml --target "$PACKAGED"
     )
-    built="$(ls -1 "$PACKAGED"/tabbyrdp-agent_"${VERSION}"_"${DEB_ARCH}".deb 2>/dev/null | head -1)"
+    built="$(ls -1 "$PACKAGED"/tabbywebrtc-agent_"${VERSION}"_"${DEB_ARCH}".deb 2>/dev/null | head -1)"
     if [[ -z "$built" ]]; then
       built="$(ls -1 "$PACKAGED"/*.deb | head -1)"
-      mv "$built" "$PACKAGED/tabbyrdp-agent_${VERSION}_${DEB_ARCH}.deb"
+      mv "$built" "$PACKAGED/tabbywebrtc-agent_${VERSION}_${DEB_ARCH}.deb"
     fi
   ;;
   macos-*)
@@ -72,7 +72,7 @@ case "$PLATFORM_KEY" in
     WIX_DIR="$STAGING/wix"
     mkdir -p "$WIX_DIR"
     cp "$ROOT/packaging/wix/main.wxs" "$WIX_DIR/main.wxs"
-    MSI_OUT="$PACKAGED/tabbyrdp-agent_${VERSION}_${MSI_ARCH}.msi"
+    MSI_OUT="$PACKAGED/tabbywebrtc-agent_${VERSION}_${MSI_ARCH}.msi"
     WIX_VERSION="${VERSION}.0"
     if [[ "$WIX_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+$ ]]; then
       :

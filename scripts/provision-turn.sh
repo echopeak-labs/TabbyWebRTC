@@ -12,7 +12,7 @@ Required environment variables:
   TURN_SECRET  static auth secret for coturn
 
 Optional:
-  TURN_DOMAIN  realm (default: turn.tabbyrdp.com)
+  TURN_DOMAIN  realm (default: turn.tabbywebrtc.com)
 
 Prerequisites:
   SSH access to root@TARGET_IP
@@ -27,7 +27,7 @@ fi
 
 TARGET_IP=${TARGET_IP:?Must set TARGET_IP}
 TURN_SECRET=${TURN_SECRET:?Must set TURN_SECRET}
-TURN_DOMAIN=${TURN_DOMAIN:-turn.tabbyrdp.com}
+TURN_DOMAIN=${TURN_DOMAIN:-turn.tabbywebrtc.com}
 
 ssh root@"$TARGET_IP" bash -s << REMOTE
 set -euo pipefail

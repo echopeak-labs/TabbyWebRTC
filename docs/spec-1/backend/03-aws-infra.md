@@ -13,7 +13,7 @@ infra/
   bin/
     app.ts                  # CDK App entry point
   lib/
-    tabbyrdp-stack.ts       # Main stack
+    tabbywebrtc-stack.ts       # Main stack
     constructs/
       websocket-api.ts      # API Gateway WebSocket + routes
       lambda-functions.ts   # All Lambda definitions
@@ -36,13 +36,13 @@ infra/
 
 ---
 
-## CDK Stack: `TabbyRDPStack`
+## CDK Stack: `TabbyWebRTCStack`
 
 ### DynamoDB Tables
 
 ```ts
 const connectionsTable = new Table(this, 'ConnectionsTable', {
-  tableName: 'tabbyrdp-connections',
+  tableName: 'tabbywebrtc-connections',
   partitionKey: { name: 'connectionId', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: 'TTL',
@@ -60,7 +60,7 @@ connectionsTable.addGlobalSecondaryIndex({
 })
 
 const pendingSessionsTable = new Table(this, 'PendingSessionsTable', {
-  tableName: 'tabbyrdp-pending-sessions',
+  tableName: 'tabbywebrtc-pending-sessions',
   partitionKey: { name: 'pendingSessionId', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: 'expiresAt',
@@ -68,7 +68,7 @@ const pendingSessionsTable = new Table(this, 'PendingSessionsTable', {
 })
 
 const agentsTable = new Table(this, 'AgentsTable', {
-  tableName: 'tabbyrdp-agents',
+  tableName: 'tabbywebrtc-agents',
   partitionKey: { name: 'agentId', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   removalPolicy: RemovalPolicy.DESTROY,
@@ -80,7 +80,7 @@ agentsTable.addGlobalSecondaryIndex({
 })
 
 const sourceLocksTable = new Table(this, 'SourceLocksTable', {
-  tableName: 'tabbyrdp-source-locks',
+  tableName: 'tabbywebrtc-source-locks',
   partitionKey: { name: 'sourceId', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: 'TTL',
@@ -166,7 +166,7 @@ wsHandlerFn.addEnvironment(
 
 ```ts
 const wsApi = new WebSocketApi(this, 'WsApi', {
-  apiName: 'tabbyrdp-signaling',
+  apiName: 'tabbywebrtc-signaling',
   connectRouteOptions: {
     integration: new WebSocketLambdaIntegration('ConnectIntegration', wsHandlerFn),
   },
@@ -189,7 +189,7 @@ const wsStage = new WebSocketStage(this, 'WsStage', {
 
 ```ts
 const restApi = new RestApi(this, 'RestApi', {
-  restApiName: 'tabbyrdp-rest',
+  restApiName: 'tabbywebrtc-rest',
   defaultCorsPreflightOptions: {
     allowOrigins: Cors.ALL_ORIGINS,
     allowMethods: ['GET', 'OPTIONS'],
@@ -232,7 +232,7 @@ These outputs are consumed by the frontend build process to inject the correct A
 
 | Environment | Stack Suffix | AWS Account | Domain |
 |---|---|---|---|
-| `dev` | `TabbyRDPDev` | Same account | `dev.signal.tabbyrdp.com` |
-| `prod` | `TabbyRDPProd` | Same account | `signal.tabbyrdp.com` |
+| `dev` | `TabbyWebRTCDev` | Same account | `dev.signal.tabbywebrtc.com` |
+| `prod` | `TabbyWebRTCProd` | Same account | `signal.tabbywebrtc.com` |
 
 Environment is selected by passing `--context env=dev` or `--context env=prod` to `cdk deploy`.

@@ -25,6 +25,6 @@ export class IamRoles extends Construct {
     props.tables.agentsTable.grantReadWriteData(this.lambdaRole);
     props.tables.sourceLocksTable.grantReadWriteData(this.lambdaRole);
 
-    Tags.of(this).add('project', 'tabbyrdp');
+    Tags.of(this).add('project', 'tabbywebrtc');
   }
 }

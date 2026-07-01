@@ -10,13 +10,13 @@ PKG_ROOT="$(mktemp -d)"
 trap 'rm -rf "$PKG_ROOT"' EXIT
 
 mkdir -p "$PKG_ROOT/usr/local/bin"
-cp "$BINARY" "$PKG_ROOT/usr/local/bin/tabbyrdp-agent"
-chmod 755 "$PKG_ROOT/usr/local/bin/tabbyrdp-agent"
+cp "$BINARY" "$PKG_ROOT/usr/local/bin/tabbywebrtc-agent"
+chmod 755 "$PKG_ROOT/usr/local/bin/tabbywebrtc-agent"
 
-OUT_FILE="$OUT_DIR/tabbyrdp-agent_${VERSION}_${ARCH}.pkg"
+OUT_FILE="$OUT_DIR/tabbywebrtc-agent_${VERSION}_${ARCH}.pkg"
 pkgbuild \
   --root "$PKG_ROOT" \
-  --identifier com.tabbyrdp.agent \
+  --identifier com.tabbywebrtc.agent \
   --version "$VERSION" \
   --install-location / \
   "$OUT_FILE"

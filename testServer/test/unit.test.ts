@@ -1,10 +1,10 @@
 import * as jose from 'jose';
 import {
-  issueTabbyRDPToken,
+  issueTabbyWebRTCToken,
   issueAgentJwt,
   resetJwksCache,
   setJwksForTests,
-  verifyTabbyRDPToken,
+  verifyTabbyWebRTCToken,
   verifyAgentJwt,
   generateTurnCredential,
 } from '../src/shared/jwt';
@@ -17,7 +17,7 @@ import { SourceLockStore } from '../src/storage/source-lock.store';
 
 describe('jwt helpers via lambda import', () => {
   beforeAll(() => {
-    process.env.TABBYRDP_JWT_SECRET = 'test-tabbyrdp-secret';
+    process.env.TABBYWEBRTC_JWT_SECRET = 'test-tabbywebrtc-secret';
     process.env.CLERK_ISSUER = 'https://clerk.test';
     process.env.CLERK_JWKS_URL = 'https://clerk.test/.well-known/jwks.json';
   });
@@ -26,9 +26,9 @@ describe('jwt helpers via lambda import', () => {
     resetJwksCache();
   });
 
-  it('issues and verifies TabbyRDP session tokens', async () => {
-    const token = await issueTabbyRDPToken('user-1', 'agent-1');
-    const payload = await verifyTabbyRDPToken(token);
+  it('issues and verifies TabbyWebRTC session tokens', async () => {
+    const token = await issueTabbyWebRTCToken('user-1', 'agent-1');
+    const payload = await verifyTabbyWebRTCToken(token);
     expect(payload.sub).toBe('user-1');
     expect(payload.agentId).toBe('agent-1');
   });
@@ -113,7 +113,7 @@ describe('source lock contention', () => {
 
   beforeEach(async () => {
     sent.length = 0;
-    process.env.TABBYRDP_JWT_SECRET = 'test-tabbyrdp-secret';
+    process.env.TABBYWEBRTC_JWT_SECRET = 'test-tabbywebrtc-secret';
 
     const connectionStore = new ConnectionStore();
     const sourceLockStore = new SourceLockStore();
@@ -124,7 +124,7 @@ describe('source lock contention', () => {
     };
     signaling = new SignalingHandlerService(connections, messageSender, sourceLockStore);
 
-    const token = await issueTabbyRDPToken('user-1', 'agent-1');
+    const token = await issueTabbyWebRTCToken('user-1', 'agent-1');
     connections.putConnection('browser-1', 'browser', { agentId: 'agent-1', userId: 'user-1' });
     connections.updateConnection('browser-1', { token, agentId: 'agent-1', userId: 'user-1' });
     connections.putConnection('browser-2', 'browser', { agentId: 'agent-1', userId: 'user-1' });

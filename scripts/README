@@ -1,4 +1,4 @@
-# TabbyRDP Scripts
+# TabbyWebRTC Scripts
 
 Developer and CI utility scripts for local development, AWS deployment, and release management.
 
@@ -31,13 +31,13 @@ Run any script with `--help` for usage and prerequisites.
 | `setup-dev.sh` | One-time dev machine setup |
 | `dev-backend.sh` | SAM local API on port 3001 |
 | `dev-frontend.sh` | Vite dev server on port 5173 |
-| `deploy-dev.sh` | Deploy TabbyRDPDev CDK stack |
-| `deploy-prod.sh` | Deploy TabbyRDPProd (requires confirmation) |
+| `deploy-dev.sh` | Deploy TabbyWebRTCDev CDK stack |
+| `deploy-prod.sh` | Deploy TabbyWebRTCProd (requires confirmation) |
 | `bootstrap-aws.sh` | CDK bootstrap + GitHub OIDC deploy role |
 | `provision-turn.sh` | SSH CoTURN install on Hetzner VPS |
-| `rotate-secrets.sh` | Rotate TABBYRDP_JWT_SECRET in GitHub Secrets |
+| `rotate-secrets.sh` | Rotate TABBYWEBRTC_JWT_SECRET in GitHub Secrets |
 | `release.sh` | Tag version and push to trigger release workflow |
-| `check-costs.sh` | Query AWS Cost Explorer for tabbyrdp-tagged spend |
+| `check-costs.sh` | Query AWS Cost Explorer for tabbywebrtc-tagged spend |
 
 ## Local backend env
 

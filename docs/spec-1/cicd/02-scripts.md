@@ -19,7 +19,7 @@ scripts/
   deploy-prod.sh        # Deploy to prod AWS environment (requires confirmation)
   bootstrap-aws.sh      # CDK bootstrap + OIDC setup (run once per AWS account)
   provision-turn.sh     # SSH-based CoTURN provisioning on Hetzner VPS
-  rotate-secrets.sh     # Rotate TABBYRDP_JWT_SECRET and update GitHub Secrets
+  rotate-secrets.sh     # Rotate TABBYWEBRTC_JWT_SECRET and update GitHub Secrets
   release.sh            # Tag a new version and trigger release workflow
   check-costs.sh        # Query AWS Cost Explorer for current month spend
 ```
@@ -78,12 +78,12 @@ sam local start-api \
 ```json
 {
   "WsHandler": {
-    "CONNECTIONS_TABLE": "tabbyrdp-connections-dev",
-    "PENDING_SESSIONS_TABLE": "tabbyrdp-pending-sessions-dev",
-    "AGENTS_TABLE": "tabbyrdp-agents-dev",
-    "SOURCE_LOCKS_TABLE": "tabbyrdp-source-locks-dev",
+    "CONNECTIONS_TABLE": "tabbywebrtc-connections-dev",
+    "PENDING_SESSIONS_TABLE": "tabbywebrtc-pending-sessions-dev",
+    "AGENTS_TABLE": "tabbywebrtc-agents-dev",
+    "SOURCE_LOCKS_TABLE": "tabbywebrtc-source-locks-dev",
     "CLERK_JWKS_URL": "https://...",
-    "TABBYRDP_JWT_SECRET": "dev-secret-change-in-prod",
+    "TABBYWEBRTC_JWT_SECRET": "dev-secret-change-in-prod",
     "TURN_SECRET": "dev-turn-secret",
     "TURN_URLS": "turn:localhost:3478",
     "WS_CALLBACK_URL": "http://localhost:3001"
@@ -119,7 +119,7 @@ set -euo pipefail
 AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 AWS_REGION=${AWS_REGION:-us-east-1}
 GITHUB_ORG=${GITHUB_ORG:?Must set GITHUB_ORG}
-GITHUB_REPO=${GITHUB_REPO:-TabbyRDP}
+GITHUB_REPO=${GITHUB_REPO:-TabbyWebRTC}
 
 echo "Bootstrapping CDK in account $AWS_ACCOUNT / $AWS_REGION..."
 cd infra && npx cdk bootstrap "aws://$AWS_ACCOUNT/$AWS_REGION"
@@ -153,13 +153,13 @@ EOF
 )
 
 ROLE_ARN=$(aws iam create-role \
-  --role-name TabbyRDPGitHubDeployRole \
+  --role-name TabbyWebRTCGitHubDeployRole \
   --assume-role-policy-document "$TRUST_POLICY" \
   --query Role.Arn --output text 2>/dev/null || \
-  aws iam get-role --role-name TabbyRDPGitHubDeployRole --query Role.Arn --output text)
+  aws iam get-role --role-name TabbyWebRTCGitHubDeployRole --query Role.Arn --output text)
 
 aws iam attach-role-policy \
-  --role-name TabbyRDPGitHubDeployRole \
+  --role-name TabbyWebRTCGitHubDeployRole \
   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 
 echo "Deploy role ARN: $ROLE_ARN"
@@ -178,7 +178,7 @@ set -euo pipefail
 
 TARGET_IP=${TARGET_IP:?Must set TARGET_IP}
 TURN_SECRET=${TURN_SECRET:?Must set TURN_SECRET}
-TURN_DOMAIN=${TURN_DOMAIN:-turn.tabbyrdp.com}
+TURN_DOMAIN=${TURN_DOMAIN:-turn.tabbywebrtc.com}
 
 ssh root@"$TARGET_IP" bash -s << REMOTE
 set -euo pipefail
@@ -230,7 +230,7 @@ echo "Release tag $VERSION pushed. Monitor the 'Build Desktop Agent' workflow fo
 
 ## `check-costs.sh`
 
-Queries AWS Cost Explorer for current month spend across all TabbyRDP resources.
+Queries AWS Cost Explorer for current month spend across all TabbyWebRTC resources.
 
 ```bash
 #!/usr/bin/env bash
@@ -243,12 +243,12 @@ aws ce get-cost-and-usage \
   --time-period "Start=$START,End=$END" \
   --granularity MONTHLY \
   --metrics UnblendedCost \
-  --filter '{"Tags":{"Key":"project","Values":["tabbyrdp"]}}' \
+  --filter '{"Tags":{"Key":"project","Values":["tabbywebrtc"]}}' \
   --query 'ResultsByTime[0].Total.UnblendedCost' \
   --output table
 ```
 
-All CDK resources should be tagged with `{ project: 'tabbyrdp' }` in the CDK stack:
+All CDK resources should be tagged with `{ project: 'tabbywebrtc' }` in the CDK stack:
 ```ts
-Tags.of(this).add('project', 'tabbyrdp')
+Tags.of(this).add('project', 'tabbywebrtc')
 ```

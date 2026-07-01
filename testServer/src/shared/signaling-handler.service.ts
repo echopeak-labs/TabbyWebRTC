@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { verifyTabbyRDPToken, type TabbyRDPTokenPayload } from './jwt';
+import { verifyTabbyWebRTCToken, type TabbyWebRTCTokenPayload } from './jwt';
 import type {
   ConnectionRecord,
   IceCandidateMessage,
@@ -29,12 +29,12 @@ export class SignalingHandlerService {
 
   private async requireValidSessionToken(
     connection: ConnectionRecord,
-  ): Promise<TabbyRDPTokenPayload> {
+  ): Promise<TabbyWebRTCTokenPayload> {
     if (!connection.token) {
       throw new Error('UNAUTHORIZED');
     }
 
-    const payload = await verifyTabbyRDPToken(connection.token);
+    const payload = await verifyTabbyWebRTCToken(connection.token);
     if (connection.agentId && payload.agentId !== connection.agentId) {
       throw new Error('UNAUTHORIZED');
     }

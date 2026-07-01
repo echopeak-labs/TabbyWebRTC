@@ -2,7 +2,7 @@ import { Controller, Get, Headers, HttpException } from '@nestjs/common';
 import {
   extractBearerToken,
   generateTurnCredential,
-  verifyTabbyRDPToken,
+  verifyTabbyWebRTCToken,
 } from '../shared/jwt';
 import { ConfigService } from '@nestjs/config';
 
@@ -20,7 +20,7 @@ export class TurnController {
     }
 
     try {
-      await verifyTabbyRDPToken(token);
+      await verifyTabbyWebRTCToken(token);
     } catch {
       throw new HttpException({ error: 'Invalid token' }, 401);
     }

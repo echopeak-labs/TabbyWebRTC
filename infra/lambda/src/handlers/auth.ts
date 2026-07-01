@@ -3,7 +3,7 @@ import { getAgent } from '../lib/agents.js';
 import { updateConnection } from '../lib/connections.js';
 import {
   extractBearerToken,
-  issueTabbyRDPToken,
+  issueTabbyWebRTCToken,
   verifyClerkJwt,
 } from '../lib/jwt.js';
 import {
@@ -41,7 +41,7 @@ export async function handleAuthApprove(
   }
 
   await deletePendingSession(pendingSessionId);
-  const token = await issueTabbyRDPToken(userId, agentId);
+  const token = await issueTabbyWebRTCToken(userId, agentId);
   await updateConnection(session.connectionId, {
     token,
     userId,

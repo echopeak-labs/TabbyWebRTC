@@ -1,15 +1,15 @@
-name: tabbyrdp-agent
+name: tabbywebrtc-agent
 arch: ${DEB_ARCH}
 platform: linux
 version: "${VERSION}"
 section: net
 priority: optional
-maintainer: TabbyRDP
-description: TabbyRDP desktop streaming agent
+maintainer: TabbyWebRTC
+description: TabbyWebRTC desktop streaming agent
 contents:
-  - src: tabbyrdp-agent
-    dst: /usr/bin/tabbyrdp-agent
-  - src: tabbyrdp-agent.service
-    dst: /lib/systemd/system/tabbyrdp-agent.service
+  - src: tabbywebrtc-agent
+    dst: /usr/bin/tabbywebrtc-agent
+  - src: tabbywebrtc-agent.service
+    dst: /lib/systemd/system/tabbywebrtc-agent.service
 scripts:
   postinstall: packaging/deb/postinstall.sh

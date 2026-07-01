@@ -2,7 +2,7 @@ import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import {
   extractBearerToken,
   generateTurnCredential,
-  verifyTabbyRDPToken,
+  verifyTabbyWebRTCToken,
 } from '../lib/jwt.js';
 
 const TURN_CREDENTIAL_TTL_SECONDS = 86400;
@@ -24,7 +24,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   try {
-    await verifyTabbyRDPToken(token);
+    await verifyTabbyWebRTCToken(token);
   } catch {
     return jsonResponse(401, { error: 'Invalid token' });
   }

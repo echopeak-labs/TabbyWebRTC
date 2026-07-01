@@ -1,22 +1,22 @@
-@startuml tabbyrdp-desktop-agent
+@startuml tabbywebrtc-desktop-agent
 skinparam backgroundColor #FAFAFA
 skinparam shadowing false
 skinparam roundcorner 10
 skinparam defaultFontName Helvetica
 skinparam componentStyle rectangle
 
-title TabbyRDP Desktop Agent — Internal Architecture\n<size:12><i>Rust workspace: agent · capture · input · webrtc_peer · signaling</i></size>
+title TabbyWebRTC Desktop Agent — Internal Architecture\n<size:12><i>Rust workspace: agent · capture · input · webrtc_peer · signaling</i></size>
 
 package "OS Layer" #EEEEEE {
   component "Displays & Windows" as os_display
   component "/dev/uinput\nSendInput\nCGEventPost" as os_input
   component "OS Keychain" as keychain
-  component "mDNS\n_tabbyrdp._tcp" as mdns
+  component "mDNS\n_tabbywebrtc._tcp" as mdns
 }
 
 package "agent crate (binary)" #E3F2FD {
   component "main.rs\n(CLI: clap)" as main
-  component "config.rs\n(~/.config/tabbyrdp/agent.toml)" as config
+  component "config.rs\n(~/.config/tabbywebrtc/agent.toml)" as config
   component "agent.rs\nAgent run loop" as agent_loop
   component "pairing.rs\nEd25519 first-run" as pairing
   component "source_enumerator.rs\n30s poll" as enumerator
@@ -122,7 +122,7 @@ note left of local_server
   **LAN path (Path A)**
   GET /info → metadata + HMAC localToken
   WS /signal → local SDP/ICE relay
-  Requires TabbyRDP JWT or X-Local-Token
+  Requires TabbyWebRTC JWT or X-Local-Token
 end note
 
 legend right

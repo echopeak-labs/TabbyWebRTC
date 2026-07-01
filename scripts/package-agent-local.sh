@@ -34,8 +34,8 @@ esac
 
 cargo build --release --target "$TARGET" --manifest-path "$AGENT/Cargo.toml"
 
-SRC="$AGENT/target/$TARGET/release/tabbyrdp-agent"
-DEST="$AGENT/tabbyrdp-agent-$PLATFORM_KEY"
+SRC="$AGENT/target/$TARGET/release/tabbywebrtc-agent"
+DEST="$AGENT/tabbywebrtc-agent-$PLATFORM_KEY"
 cp "$SRC" "$DEST"
 
 chmod +x "$AGENT/packaging/build.sh" "$AGENT/packaging/macos/build-pkg.sh" "$AGENT/packaging/deb/postinstall.sh"

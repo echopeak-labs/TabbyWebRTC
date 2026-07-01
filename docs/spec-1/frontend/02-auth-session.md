@@ -13,7 +13,7 @@ Defines the complete authentication system across both device roles. The webapp 
 | Goal | Display QR, receive approval, stream | Sign in with Clerk, scan QR, approve sessions |
 | Identity | No Clerk account needed | Clerk account required |
 | Session storage | `sessionStorage` (volatile, wiped on tab close) | Clerk-managed (persistent across app close) |
-| Token held | TabbyRDP JWT (scoped to one streaming session) | Clerk JWT (permanent identity credential) |
+| Token held | TabbyWebRTC JWT (scoped to one streaming session) | Clerk JWT (permanent identity credential) |
 | After auth | Navigate to `/launchpad` | Navigate to `/agents` |
 | WebRTC | Yes | No — never |
 
@@ -26,7 +26,7 @@ Defines the complete authentication system across both device roles. The webapp 
 1. App detects `role = 'desktop-viewer'` via `useDeviceType()`.
 2. `initAuthSync()` broadcasts `REQUEST_AUTH_TOKEN` on `BroadcastChannel("auth_sync")`.
 3. 150 ms timeout with no response → token is `null` → render `ConnectPage`.
-4. `ConnectPage` opens WSS connection to `wss://signal.tabbyrdp.com/prod`.
+4. `ConnectPage` opens WSS connection to `wss://signal.tabbywebrtc.com/prod`.
 5. Lambda `$connect` handler fires: generates `pendingSessionId` (UUID v4, 30 s TTL), stores in DynamoDB, sends `SESSION_PENDING` back.
 6. `ConnectPage` renders QR code from `pendingSessionId`.
 7. QR refreshes every 28 s (browser sends `REFRESH_SESSION` to rotate the ID before TTL expires).
@@ -42,14 +42,14 @@ Defines the complete authentication system across both device roles. The webapp 
 
 ### Phase D3: Session Expiry
 
-- TabbyRDP JWT has an 8-hour TTL. On 401 from Lambda: `authStore.clearSession()` → clear `sessionStorage` → redirect to `/`.
+- TabbyWebRTC JWT has an 8-hour TTL. On 401 from Lambda: `authStore.clearSession()` → clear `sessionStorage` → redirect to `/`.
 - All tabs close → browser destroys all `sessionStorage` instances → next visit starts fresh at `ConnectPage`.
 
 ### `ConnectPage` UI
 
 ```
 +----------------------------------+
-|          TabbyRDP                |  ← Amber wordmark
+|          TabbyWebRTC                |  ← Amber wordmark
 |                                  |
 |    ┌────────────────────┐        |
 |    │  [countdown ring]  │        |
@@ -88,7 +88,7 @@ This page is shown **only on first visit** or after sign-out. On subsequent app 
 
 ```
 +----------------------------------+
-|          TabbyRDP                |  ← Amber wordmark
+|          TabbyWebRTC                |  ← Amber wordmark
 |                                  |
 |  Sign in to continue             |
 |                                  |
@@ -168,7 +168,7 @@ This page is shown **only on first visit** or after sign-out. On subsequent app 
 
 ```
 +----------------------------------+
-|  TabbyRDP           [Sign out]   |
+|  TabbyWebRTC           [Sign out]   |
 |                                  |
 |  Your Machines                   |
 |                                  |
@@ -234,9 +234,9 @@ type DesktopInboundMessage =
 
 | Rule | Scope |
 |---|---|
-| TabbyRDP streaming JWT MUST NOT be written to `localStorage` or any cookie | Desktop |
+| TabbyWebRTC streaming JWT MUST NOT be written to `localStorage` or any cookie | Desktop |
 | Clerk session token is managed exclusively by Clerk SDK (never read/written manually) | Mobile |
 | `pendingSessionId` is single-use — Lambda deletes it on first `AUTH_APPROVE` | Both |
-| Mobile NEVER receives a TabbyRDP streaming token — it only triggers issuance for the desktop | Both |
+| Mobile NEVER receives a TabbyWebRTC streaming token — it only triggers issuance for the desktop | Both |
 | WSS (TLS 1.3+) for all signaling traffic | Both |
 | WebRTC DTLS-SRTP enforced for all media and data channels | Desktop |

@@ -14,7 +14,7 @@ const RTC_CONFIG: RTCConfiguration = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     {
-      urls: 'turn:turn.tabbyrdp.com:3478',
+      urls: 'turn:turn.tabbywebrtc.com:3478',
       username: '<dynamic-credential>',
       credential: '<dynamic-credential>',
     },

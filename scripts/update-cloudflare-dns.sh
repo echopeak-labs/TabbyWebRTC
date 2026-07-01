@@ -3,10 +3,10 @@ set -euo pipefail
 
 : "${CLOUDFLARE_API_TOKEN:?}"
 : "${CLOUDFLARE_ZONE_ID:?}"
-: "${TABBYRDP_CF_DOMAIN:?}"
+: "${TABBYWEBRTC_CF_DOMAIN:?}"
 
 ROOT_DOMAIN="${ROOT_DOMAIN:-mikewheeler.dev}"
-TABBYRDP_DNS_NAME="${TABBYRDP_DNS_NAME:?}"
+TABBYWEBRTC_DNS_NAME="${TABBYWEBRTC_DNS_NAME:?}"
 
 fqdn_in_zone() {
   local n="$1"
@@ -57,5 +57,5 @@ upsert_cname() {
   }
 }
 
-upsert_cname "$TABBYRDP_DNS_NAME" "$TABBYRDP_CF_DOMAIN"
-echo "Updated CNAME $(fqdn_in_zone "$TABBYRDP_DNS_NAME") -> ${TABBYRDP_CF_DOMAIN}"
+upsert_cname "$TABBYWEBRTC_DNS_NAME" "$TABBYWEBRTC_CF_DOMAIN"
+echo "Updated CNAME $(fqdn_in_zone "$TABBYWEBRTC_DNS_NAME") -> ${TABBYWEBRTC_CF_DOMAIN}"

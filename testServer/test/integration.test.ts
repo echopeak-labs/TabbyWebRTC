@@ -73,7 +73,7 @@ describe('auth and signaling integration', () => {
   let clerkToken: string;
 
   beforeAll(async () => {
-    process.env.TABBYRDP_JWT_SECRET = 'test-tabbyrdp-secret';
+    process.env.TABBYWEBRTC_JWT_SECRET = 'test-tabbywebrtc-secret';
     process.env.CLERK_ISSUER = 'https://clerk.test';
     process.env.CLERK_JWKS_URL = 'https://clerk.test/.well-known/jwks.json';
     process.env.TURN_SECRET = 'turn-secret';

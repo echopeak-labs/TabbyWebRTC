@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
-  issueTabbyRDPToken,
+  issueTabbyWebRTCToken,
   verifyClerkJwt,
 } from './jwt';
 import type { ConnectionRecord } from './types';
@@ -38,7 +38,7 @@ export class AuthHandlerService {
     }
 
     this.pendingSessions.deletePendingSession(pendingSessionId);
-    const token = await issueTabbyRDPToken(userId, agentId);
+    const token = await issueTabbyWebRTCToken(userId, agentId);
     this.connections.updateConnection(session.connectionId, {
       token,
       userId,

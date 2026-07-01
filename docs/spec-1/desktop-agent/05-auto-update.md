@@ -2,7 +2,7 @@
 
 ## Scope
 
-Defines the background auto-update system for the TabbyRDP desktop agent: periodic manifest polling, SHA-256 checksum validation, silent native installer execution, and process restart on macOS, Windows, and Linux.
+Defines the background auto-update system for the TabbyWebRTC desktop agent: periodic manifest polling, SHA-256 checksum validation, silent native installer execution, and process restart on macOS, Windows, and Linux.
 
 ---
 
@@ -36,7 +36,7 @@ channel = "dev"
 | `base_url` | string | build-time env | REST API root URL for the update endpoints |
 | `channel` | string | `"dev"` | Informational label (`dev` \| `prod`); must match the stack that owns `base_url` |
 
-**Build-time default:** CI sets `TABBYRDP_UPDATE_BASE_URL` when compiling release binaries. If unset at build time, the default in generated config TOML uses a placeholder that must be edited before auto-update works.
+**Build-time default:** CI sets `TABBYWEBRTC_UPDATE_BASE_URL` when compiling release binaries. If unset at build time, the default in generated config TOML uses a placeholder that must be edited before auto-update works.
 
 ```rust
 pub struct UpdatesSection {
@@ -48,7 +48,7 @@ pub struct UpdatesSection {
 }
 
 fn default_update_base_url() -> String {
-    option_env!("TABBYRDP_UPDATE_BASE_URL")
+    option_env!("TABBYWEBRTC_UPDATE_BASE_URL")
         .unwrap_or("https://REPLACE_DEV_REST_URL/")
         .to_string()
 }
@@ -132,8 +132,8 @@ First check also waits the random interval (no immediate check on startup).
 5. If remote <= local, log at debug and return to sleep.
 6. If remote > local and peers are active (`!idle_check()`), log info "update deferred, streams active" and return to sleep.
 7. Download installer to temp directory:
-   - Linux/macOS: `{std::env::temp_dir()}/tabbyrdp-update/{filename}`
-   - Windows: `%TEMP%\tabbyrdp-update\{filename}`
+   - Linux/macOS: `{std::env::temp_dir()}/tabbywebrtc-update/{filename}`
+   - Windows: `%TEMP%\tabbywebrtc-update\{filename}`
 8. Stream download from `GET {base_url}/downloads/{platform}`; log byte progress at info every 10 MB.
 9. Verify SHA-256 of downloaded file matches `artifacts[platform].sha256` (lowercase hex). On mismatch: delete file, log error, abort.
 10. Run silent install (see below).
@@ -159,9 +159,9 @@ All install commands run via `tokio::process::Command`. Check exit status; log s
 
 | OS | Strategy |
 |---|---|
-| Linux | `systemctl restart tabbyrdp-agent` if systemd unit exists; else `exec()` replacement of current binary path |
-| macOS | `launchctl kickstart -k system/com.tabbyrdp.agent` if LaunchDaemon registered; else `exec()` |
-| Windows | Spawn `cmd /C timeout /t 2 && net start TabbyRDPAgent` helper; exit current process |
+| Linux | `systemctl restart tabbywebrtc-agent` if systemd unit exists; else `exec()` replacement of current binary path |
+| macOS | `launchctl kickstart -k system/com.tabbywebrtc.agent` if LaunchDaemon registered; else `exec()` |
+| Windows | Spawn `cmd /C timeout /t 2 && net start TabbyWebRTCAgent` helper; exit current process |
 
 Log "update applied, restarting" at info before exit.
 
