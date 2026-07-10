@@ -48,6 +48,7 @@ function parseQRPayload(raw: string): QRPayload | null {
 
 async function deliverAgentJwt(
   agentJwt: string,
+  pairingNonce: string,
   endpoints: string[],
 ): Promise<boolean> {
   for (const base of endpoints) {
@@ -57,7 +58,7 @@ async function deliverAgentJwt(
       const response = await fetch(`${base.replace(/\/$/, '')}/pair`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: agentJwt }),
+        body: JSON.stringify({ token: agentJwt, nonce: pairingNonce }),
         signal: controller.signal,
       })
       clearTimeout(timeout)
@@ -65,7 +66,6 @@ async function deliverAgentJwt(
         return true
       }
     } catch {
-      // try next endpoint
     }
   }
   return false
@@ -148,7 +148,7 @@ export function MobileScanPage() {
           'http://localhost:7700',
         ].filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index)
 
-        await deliverAgentJwt(pairBody.agentJwt, endpoints)
+        await deliverAgentJwt(pairBody.agentJwt, pairingNonce, endpoints)
 
         const agent = {
           agentId: payload.agentId,

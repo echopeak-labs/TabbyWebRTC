@@ -1,5 +1,5 @@
 import { PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
-import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import * as jose from 'jose';
 import type { APIGatewayProxyResult } from 'aws-lambda';
 import type { ConnectionRecord } from '../lambda/src/types';
@@ -105,6 +105,15 @@ describe('auth flow', () => {
   });
 
   it('rotates pending sessions on refresh', async () => {
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        pendingSessionId: 'old-pending',
+        connectionId: 'browser-conn',
+        expiresAt: Math.floor(Date.now() / 1000) + 30,
+        status: 'PENDING',
+      },
+    });
+    ddbMock.on(DeleteCommand).resolves({});
     ddbMock.on(PutCommand).resolves({});
     apiMock.on(PostToConnectionCommand).resolves({});
 
@@ -121,6 +130,35 @@ describe('auth flow', () => {
     expect(payload.type).toBe('SESSION_PENDING');
     expect(payload.pendingSessionId).not.toBe('old-pending');
     expect(payload.expiresIn).toBe(30);
+  });
+
+  it('emits SESSION_EXPIRED when refreshing an expired pending session', async () => {
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        pendingSessionId: 'old-pending',
+        connectionId: 'browser-conn',
+        expiresAt: Math.floor(Date.now() / 1000) - 5,
+        status: 'PENDING',
+      },
+    });
+    ddbMock.on(DeleteCommand).resolves({});
+    ddbMock.on(PutCommand).resolves({});
+    apiMock.on(PostToConnectionCommand).resolves({});
+
+    await handleRefreshSession({
+      connectionId: 'browser-conn',
+      clientType: 'browser',
+      pendingSessionId: 'old-pending',
+      connectedAt: Date.now(),
+      TTL: 9999999999,
+    } satisfies ConnectionRecord);
+
+    const calls = apiMock.commandCalls(PostToConnectionCommand);
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    const first = JSON.parse((calls[0]!.args[0].input.Data as Buffer).toString());
+    const second = JSON.parse((calls[1]!.args[0].input.Data as Buffer).toString());
+    expect(first.type).toBe('SESSION_EXPIRED');
+    expect(second.type).toBe('SESSION_PENDING');
   });
 });
 

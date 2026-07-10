@@ -30,7 +30,7 @@ export class PendingSessionStore {
   }
 
   get(pendingSessionId: string): PendingSessionRecord | undefined {
-    const record = this.records.get(pendingSessionId);
+    const record = this.peek(pendingSessionId);
     if (!record) {
       return undefined;
     }
@@ -39,6 +39,10 @@ export class PendingSessionStore {
       return undefined;
     }
     return record;
+  }
+
+  peek(pendingSessionId: string): PendingSessionRecord | undefined {
+    return this.records.get(pendingSessionId);
   }
 
   delete(pendingSessionId: string): void {

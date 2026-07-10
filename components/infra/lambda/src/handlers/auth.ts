@@ -11,6 +11,7 @@ import {
   createPendingSession,
   deletePendingSession,
   getPendingSession,
+  peekPendingSession,
   PENDING_SESSION_EXPIRES_SECONDS,
   rotatePendingSession,
 } from '../lib/pending-sessions.js';
@@ -72,6 +73,14 @@ export async function handleAuthApprove(
 export async function handleRefreshSession(connection: ConnectionRecord): Promise<void> {
   if (connection.clientType !== 'browser') {
     throw new Error('INVALID_CLIENT');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (connection.pendingSessionId) {
+    const previous = await peekPendingSession(connection.pendingSessionId);
+    if (!previous || previous.expiresAt <= now) {
+      await sendToConnection(connection.connectionId, { type: 'SESSION_EXPIRED' });
+    }
   }
 
   const session = connection.pendingSessionId

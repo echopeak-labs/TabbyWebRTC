@@ -27,6 +27,10 @@ export class PendingSessionsService implements OnModuleInit {
     return this.store.get(pendingSessionId);
   }
 
+  peekPendingSession(pendingSessionId: string): PendingSessionRecord | undefined {
+    return this.store.peek(pendingSessionId);
+  }
+
   deletePendingSession(pendingSessionId: string): void {
     this.store.delete(pendingSessionId);
   }

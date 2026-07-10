@@ -30,7 +30,7 @@ export async function createPendingSession(connectionId: string): Promise<Pendin
   return record;
 }
 
-export async function getPendingSession(
+export async function peekPendingSession(
   pendingSessionId: string,
 ): Promise<PendingSessionRecord | undefined> {
   const result = await docClient.send(
@@ -39,7 +39,13 @@ export async function getPendingSession(
       Key: { pendingSessionId },
     }),
   );
-  const record = result.Item as PendingSessionRecord | undefined;
+  return result.Item as PendingSessionRecord | undefined;
+}
+
+export async function getPendingSession(
+  pendingSessionId: string,
+): Promise<PendingSessionRecord | undefined> {
+  const record = await peekPendingSession(pendingSessionId);
   if (!record) {
     return undefined;
   }

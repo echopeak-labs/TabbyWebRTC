@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { writeSession } from '@/lib/auth-sync'
+import { probeAgentInfo, storeLocalEndpoint } from '@/lib/local-agent'
 import { signalClient } from '@/lib/signal-client'
 import type { SessionQRPayload } from '@/types/auth'
 
@@ -54,9 +55,11 @@ function LocalNetworkModal({
 }: {
   open: boolean
   onClose: () => void
-  onSubmit: (ip: string) => void
+  onSubmit: (ip: string) => Promise<void>
 }) {
   const [ip, setIp] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!open) {
     return null
@@ -77,12 +80,25 @@ function LocalNetworkModal({
             placeholder="192.168.1.42"
             className="h-11 w-full rounded-md border border-input bg-background px-3 text-textPrimary"
           />
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1" onClick={onClose}>
+            <Button variant="ghost" className="flex-1" onClick={onClose} disabled={busy}>
               Cancel
             </Button>
-            <Button className="flex-1" onClick={() => onSubmit(ip)} disabled={!ip.trim()}>
-              Save
+            <Button
+              className="flex-1"
+              disabled={!ip.trim() || busy}
+              onClick={() => {
+                setBusy(true)
+                setError(null)
+                void onSubmit(ip.trim())
+                  .catch((err: unknown) => {
+                    setError(err instanceof Error ? err.message : 'Probe failed')
+                  })
+                  .finally(() => setBusy(false))
+              }}
+            >
+              {busy ? 'Probing…' : 'Connect'}
             </Button>
           </div>
         </CardContent>
@@ -254,9 +270,20 @@ export function ConnectPage() {
       <LocalNetworkModal
         open={showLocalModal}
         onClose={() => setShowLocalModal(false)}
-        onSubmit={(ip) => {
-          setLocalIp(ip.trim())
+        onSubmit={async (ip) => {
+          const host = ip.replace(/^https?:\/\//, '').split('/')[0]?.split(':')[0]
+          if (!host) {
+            throw new Error('Enter a valid IP or hostname')
+          }
+          const baseUrl = `http://${host}:7700`
+          const info = await probeAgentInfo(baseUrl)
+          if (!info) {
+            throw new Error(`No agent at ${baseUrl}`)
+          }
+          storeLocalEndpoint(baseUrl)
+          setLocalIp(host)
           setShowLocalModal(false)
+          setError(null)
         }}
       />
     </div>

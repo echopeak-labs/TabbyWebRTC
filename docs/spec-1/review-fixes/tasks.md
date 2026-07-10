@@ -119,16 +119,16 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 ## Wave 3 — Polish (low)
 
 ### FE-06 CSP / security headers
-- [ ] CloudFront (or equivalent) CSP + frame denial for SPA
+- [x] CloudFront (or equivalent) CSP + frame denial for SPA
 
 ### FE-07 Local network modal
-- [ ] Wire IP modal to probe `:7700/info` + authenticated sources
+- [x] Wire IP modal to probe `:7700/info` + authenticated sources
 
 ### DA-08 Pairing /pair challenge
-- [ ] One-time code, localhost-only bind, or signed nonce on `POST /pair`
+- [x] One-time code, localhost-only bind, or signed nonce on `POST /pair`
 
 ### INF-09 SESSION_EXPIRED from Lambda
-- [ ] Emit `SESSION_EXPIRED` when pending TTL elapsed without refresh
+- [x] Emit `SESSION_EXPIRED` when pending TTL elapsed without refresh
 
 ---
 

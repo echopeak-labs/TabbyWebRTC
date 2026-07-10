@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
+import {
+  probeAgentInfo,
+  readStoredLocalEndpoint,
+  storeLocalEndpoint,
+} from '@/lib/local-agent'
 import { signalClient } from '@/lib/signal-client'
 import { useAgentStore } from '@/stores/agentStore'
 import type { AppWindow, Display } from '@/types/agent'
 
-const LOCAL_ENDPOINT_KEY = 'tabbywebrtc_local_endpoint'
 const SOURCE_POLL_MS = 30_000
 
 interface SourceView {
@@ -57,33 +61,15 @@ function mapSources(
 }
 
 async function probeLocalAgent(baseUrl: string, agentId: string): Promise<LocalProbeResult | null> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 2000)
-    const response = await fetch(`${baseUrl}/info`, { signal: controller.signal })
-    clearTimeout(timeout)
-    if (!response.ok) {
-      return null
-    }
-    const info = (await response.json()) as {
-      agentId?: string
-      agent_id?: string
-      localToken?: string
-      local_token?: string
-    }
-    const id = info.agentId ?? info.agent_id
-    const localToken = info.localToken ?? info.local_token
-    if (id === agentId && localToken) {
-      return { baseUrl, localToken }
-    }
-  } catch {
+  const info = await probeAgentInfo(baseUrl)
+  if (!info || info.agentId !== agentId) {
     return null
   }
-  return null
+  return { baseUrl: baseUrl.replace(/\/$/, ''), localToken: info.localToken }
 }
 
 async function resolveLocalAgent(agentId: string): Promise<LocalProbeResult | null> {
-  const stored = sessionStorage.getItem(LOCAL_ENDPOINT_KEY)
+  const stored = readStoredLocalEndpoint()
   if (stored) {
     const probed = await probeLocalAgent(stored, agentId)
     if (probed) {
@@ -95,7 +81,7 @@ async function resolveLocalAgent(agentId: string): Promise<LocalProbeResult | nu
   for (const url of candidates) {
     const probed = await probeLocalAgent(url, agentId)
     if (probed) {
-      sessionStorage.setItem(LOCAL_ENDPOINT_KEY, url)
+      storeLocalEndpoint(url)
       return probed
     }
   }
@@ -138,7 +124,7 @@ export function useAgentSources(token: string | null, agentId: string | null): {
       setDisplays(mapped.displays)
       setApps(mapped.apps)
       if (localEndpoint) {
-        sessionStorage.setItem(LOCAL_ENDPOINT_KEY, localEndpoint)
+        storeLocalEndpoint(localEndpoint)
         setAgentBaseUrl(localEndpoint)
       }
       setAgentOnline(true)

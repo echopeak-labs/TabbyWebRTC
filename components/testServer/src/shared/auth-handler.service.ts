@@ -71,6 +71,16 @@ export class AuthHandlerService {
       throw new Error('INVALID_CLIENT');
     }
 
+    const now = Math.floor(Date.now() / 1000);
+    if (connection.pendingSessionId) {
+      const previous = this.pendingSessions.peekPendingSession(connection.pendingSessionId);
+      if (!previous || previous.expiresAt <= now) {
+        await this.messageSender.sendToConnection(connection.connectionId, {
+          type: 'SESSION_EXPIRED',
+        });
+      }
+    }
+
     const session = connection.pendingSessionId
       ? this.pendingSessions.rotatePendingSession(
           connection.pendingSessionId,

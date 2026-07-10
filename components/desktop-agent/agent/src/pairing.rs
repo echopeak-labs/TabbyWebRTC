@@ -24,12 +24,14 @@ use input::platform_name;
 pub struct PairingState {
     pub agent_id: String,
     pub public_key_b64: String,
+    pub pairing_nonce: String,
     pub jwt_tx: Arc<RwLock<Option<oneshot::Sender<String>>>>,
 }
 
 #[derive(Deserialize)]
 pub struct PairCompleteRequest {
     pub token: String,
+    pub nonce: String,
 }
 
 #[derive(Serialize)]
@@ -99,10 +101,11 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
     let state = PairingState {
         agent_id: config.agent.id.clone(),
         public_key_b64,
+        pairing_nonce: pairing_nonce.clone(),
         jwt_tx: Arc::new(RwLock::new(Some(jwt_tx))),
     };
 
-    let bind = format!("{}:{}", config.http.bind, config.http.thumbnail_port);
+    let bind = format!("127.0.0.1:{}", config.http.thumbnail_port);
     let app = Router::new()
         .route("/pair", post(complete_pairing))
         .route("/pair/status", get(pairing_status))
@@ -173,26 +176,44 @@ struct PairClaimResponse {
 async fn complete_pairing(
     State(state): State<PairingState>,
     Json(body): Json<PairCompleteRequest>,
-) -> Json<PairingStatus> {
+) -> (axum::http::StatusCode, Json<PairingStatus>) {
     if body.token.is_empty() {
-        return Json(PairingStatus {
-            ok: false,
-            message: "token required".into(),
-        });
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(PairingStatus {
+                ok: false,
+                message: "token required".into(),
+            }),
+        );
+    }
+    if body.nonce.is_empty() || body.nonce != state.pairing_nonce {
+        return (
+            axum::http::StatusCode::UNAUTHORIZED,
+            Json(PairingStatus {
+                ok: false,
+                message: "invalid pairing nonce".into(),
+            }),
+        );
     }
 
     let mut slot = state.jwt_tx.write().await;
     if let Some(tx) = slot.take() {
         let _ = tx.send(body.token);
-        Json(PairingStatus {
-            ok: true,
-            message: "paired".into(),
-        })
+        (
+            axum::http::StatusCode::OK,
+            Json(PairingStatus {
+                ok: true,
+                message: "paired".into(),
+            }),
+        )
     } else {
-        Json(PairingStatus {
-            ok: false,
-            message: "pairing already completed".into(),
-        })
+        (
+            axum::http::StatusCode::CONFLICT,
+            Json(PairingStatus {
+                ok: false,
+                message: "pairing already completed".into(),
+            }),
+        )
     }
 }
 
