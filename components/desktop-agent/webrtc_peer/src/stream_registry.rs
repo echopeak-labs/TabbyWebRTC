@@ -77,6 +77,7 @@ impl StreamRegistry {
         &mut self,
         source_id: &str,
         source: Box<dyn Capturable>,
+        capture_config: Option<CaptureConfig>,
     ) -> anyhow::Result<()> {
         let Some(stream) = self.streams.get_mut(source_id) else {
             anyhow::bail!("track missing for {source_id}");
@@ -88,7 +89,7 @@ impl StreamRegistry {
         let shutdown = CancellationToken::new();
         let track_for_loop = stream.track.clone();
         let shutdown_for_loop = shutdown.clone();
-        let config = self.capture_config.clone();
+        let config = capture_config.unwrap_or_else(|| self.capture_config.clone());
         let source_id_owned = source_id.to_string();
 
         tokio::spawn(async move {

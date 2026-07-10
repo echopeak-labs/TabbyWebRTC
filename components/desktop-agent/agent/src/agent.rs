@@ -83,6 +83,8 @@ impl Agent {
             encoder: self.config.capture.encoder.clone(),
             max_fps: self.config.capture.max_fps,
             hide_cursor: self.config.capture.hide_cursor,
+            max_width: self.config.capture.max_width,
+            on_video_size: None,
         };
 
         let input_policy = InputPolicy {

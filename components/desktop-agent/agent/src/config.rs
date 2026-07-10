@@ -53,6 +53,12 @@ pub struct CaptureSection {
     pub encoder: String,
     pub max_fps: u32,
     pub hide_cursor: bool,
+    #[serde(default = "default_max_width")]
+    pub max_width: u32,
+}
+
+fn default_max_width() -> u32 {
+    0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,8 +143,9 @@ impl Default for AgentConfig {
             },
             capture: CaptureSection {
                 encoder: "auto".into(),
-                max_fps: 60,
+                max_fps: 30,
                 hide_cursor: true,
+                max_width: 0,
             },
             http: HttpSection {
                 thumbnail_port: 7700,

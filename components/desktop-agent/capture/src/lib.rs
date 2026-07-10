@@ -1,5 +1,7 @@
 mod capture_loop;
 mod encoder;
+#[cfg(feature = "hardware-encode")]
+mod vaapi_encoder;
 mod linux;
 mod macos;
 mod minimize;

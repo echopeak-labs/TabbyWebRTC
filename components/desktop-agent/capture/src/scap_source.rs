@@ -125,7 +125,7 @@ impl crate::Capturable for ScapCapturable {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("capture not started"))?;
         let scap_frame = capturer
-            .get_next_frame()
+            .get_latest_frame()
             .map_err(|e| anyhow::anyhow!("frame receive failed: {e}"))?;
         let timestamp_us = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -181,19 +181,13 @@ fn video_frame_to_frame(
             height: bgr.height as u32,
             timestamp_us,
         }),
-        VideoFrame::BGRx(bgrx) => {
-            let mut data = pack_bgra_rows(bgrx.data, bgrx.width as u32, bgrx.height as u32, 4)?;
-            for px in data.chunks_exact_mut(4) {
-                px[3] = 255;
-            }
-            Ok(Frame {
-                data,
-                format: PixelFormat::BGRA,
-                width: bgrx.width as u32,
-                height: bgrx.height as u32,
-                timestamp_us,
-            })
-        }
+        VideoFrame::BGRx(bgrx) => Ok(Frame {
+            data: pack_bgra_rows(bgrx.data, bgrx.width as u32, bgrx.height as u32, 4)?,
+            format: PixelFormat::BGRA,
+            width: bgrx.width as u32,
+            height: bgrx.height as u32,
+            timestamp_us,
+        }),
         VideoFrame::RGBx(rgbx) => {
             let packed = pack_bgra_rows(rgbx.data, rgbx.width as u32, rgbx.height as u32, 4)?;
             let mut data = Vec::with_capacity(packed.len());

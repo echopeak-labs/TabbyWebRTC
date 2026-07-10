@@ -53,7 +53,7 @@ impl sc::stream::DelegateImpl for ErrorHandler {
 
 #[repr(C)]
 pub struct CapturerInner {
-    pub tx: mpsc::Sender<ChannelItem>,
+    pub tx: mpsc::SyncSender<ChannelItem>,
 }
 
 define_obj_type!(pub Capturer + StreamOutputImpl, CapturerInner, CAPTURER);
@@ -85,7 +85,7 @@ pub(crate) enum CreateCapturerError {
 
 pub(crate) fn create_capturer(
     options: &Options,
-    tx: mpsc::Sender<ChannelItem>,
+    tx: mpsc::SyncSender<ChannelItem>,
     error_flag: Arc<AtomicBool>,
 ) -> Result<(arc::R<Capturer>, arc::R<ErrorHandler>, arc::R<sc::Stream>), CreateCapturerError> {
     // If no target is specified, capture the main display

@@ -29,7 +29,7 @@ use windows_capture::{
 
 #[derive(Debug)]
 struct Capturer {
-    pub tx: mpsc::Sender<Frame>,
+    pub tx: mpsc::SyncSender<Frame>,
     pub crop: Option<Area>,
     pub start_time: (i64, SystemTime),
     pub perf_freq: i64,
@@ -172,7 +172,7 @@ impl WCStream {
 
 #[derive(Clone, Debug)]
 struct FlagStruct {
-    pub tx: mpsc::Sender<Frame>,
+    pub tx: mpsc::SyncSender<Frame>,
     pub crop: Option<Area>,
 }
 
@@ -184,7 +184,7 @@ pub enum CreateCapturerError {
 
 pub fn create_capturer(
     options: &Options,
-    tx: mpsc::Sender<Frame>,
+    tx: mpsc::SyncSender<Frame>,
 ) -> Result<WCStream, CreateCapturerError> {
     let target = options
         .target

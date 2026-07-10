@@ -7,6 +7,20 @@ source "$ROOT/scripts/dev-env.sh"
 # shellcheck source=agent-features.sh
 source "$ROOT/scripts/agent-features.sh"
 
+if [[ -e /dev/uinput && ! -w /dev/uinput ]]; then
+  if getent group input >/dev/null \
+    && id -nG "$USER" 2>/dev/null | tr ' ' '\n' | grep -qx input \
+    && ! id -nG | tr ' ' '\n' | grep -qx input; then
+    echo "WARNING: /dev/uinput not writable in this session." >&2
+    echo "  You are in the input group, but this desktop session started before that." >&2
+    echo "  Log out of the desktop session and back in, then restart the agent." >&2
+    echo "  Do not use 'sg input' — it breaks the PipeWire portal (black screen)." >&2
+  else
+    echo "WARNING: /dev/uinput is not writable; remote mouse/keyboard will be disabled." >&2
+    echo "  Fix: sudo usermod -aG input \"\$USER\" && log out/in" >&2
+  fi
+fi
+
 AGENT_CONFIG_DIR="$ROOT/.local"
 AGENT_CONFIG="$AGENT_CONFIG_DIR/agent-dev.toml"
 mkdir -p "$AGENT_CONFIG_DIR"
@@ -22,7 +36,8 @@ api_url = "${REST_URL}"
 
 [capture]
 encoder = "auto"
-max_fps = 60
+max_fps = 30
+max_width = 0
 hide_cursor = true
 
 [http]

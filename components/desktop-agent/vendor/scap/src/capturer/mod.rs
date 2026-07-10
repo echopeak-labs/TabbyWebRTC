@@ -111,7 +111,7 @@ impl Capturer {
             return Err(CapturerBuildError::PermissionNotGranted);
         }
 
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::sync_channel(2);
         let engine = engine::Engine::new(&options, tx);
 
         Ok(Capturer { engine, rx })
@@ -138,6 +138,16 @@ impl Capturer {
                 return Ok(frame);
             }
         }
+    }
+
+    pub fn get_latest_frame(&self) -> Result<Frame, mpsc::RecvError> {
+        let mut frame = self.get_next_frame()?;
+        while let Ok(item) = self.rx.try_recv() {
+            if let Some(latest) = self.engine.process_channel_item(item) {
+                frame = latest;
+            }
+        }
+        Ok(frame)
     }
 
     /// Get the dimensions the frames will be captured in

@@ -130,16 +130,6 @@ impl PeerCoordinator {
             .await
             .context("add_track failed")?;
 
-        {
-            let mut registry = self.registry.lock().await;
-            if !registry.is_capture_running(&source_id) {
-                let capture_config = registry.capture_config().clone();
-                let source = create_capturable(&source_id, &capture_config)
-                    .with_context(|| format!("failed to open capture source {source_id}"))?;
-                registry.start_capture_if_needed(&source_id, source)?;
-            }
-        }
-
         let mut rtcp_buf = vec![0u8; 1500];
         tokio::spawn(async move {
             while rtp_sender.read(&mut rtcp_buf).await.is_ok() {}
@@ -158,24 +148,7 @@ impl PeerCoordinator {
             .context("create_data_channel failed")?;
 
         let injector = Arc::new(Mutex::new(create_injector()?));
-        run_input_handler(data_channel, injector, self.input_policy).await;
-
-        let offer = pc.create_offer(None).await.context("create_offer failed")?;
-        let offer_payload = serde_json::json!({
-            "type": "offer",
-            "sdp": offer.sdp,
-        });
-        pc.set_local_description(offer)
-            .await
-            .context("set_local_description failed")?;
-
-        signaling
-            .send(&OutboundMessage::SdpOffer {
-                source_id: source_id.clone(),
-                sdp: offer_payload,
-                target_connection_id: browser_connection_id.clone(),
-            })
-            .await?;
+        run_input_handler(data_channel, injector.clone(), self.input_policy).await;
 
         let signaling_for_ice = signaling.clone();
         let source_id_for_ice = source_id.clone();
@@ -213,12 +186,14 @@ impl PeerCoordinator {
             let source_id = source_id_for_ice.clone();
             Box::pin(async move {
                 match state {
-                    webrtc::ice_transport::ice_connection_state::RTCIceConnectionState::Failed
-                    | webrtc::ice_transport::ice_connection_state::RTCIceConnectionState::Disconnected => {
-                        warn!(tab_id = %tab_id, ?state, "ICE connection degraded");
+                    webrtc::ice_transport::ice_connection_state::RTCIceConnectionState::Failed => {
+                        warn!(tab_id = %tab_id, ?state, "ICE connection failed");
                         if let Err(err) = coordinator.handle_unsubscribe(&tab_id, &source_id).await {
                             error!(%err, tab_id = %tab_id, "ICE cleanup failed");
                         }
+                    }
+                    webrtc::ice_transport::ice_connection_state::RTCIceConnectionState::Disconnected => {
+                        warn!(tab_id = %tab_id, "ICE temporarily disconnected");
                     }
                     webrtc::ice_transport::ice_connection_state::RTCIceConnectionState::Connected => {
                         info!(tab_id = %tab_id, "ICE connected");
@@ -241,14 +216,53 @@ impl PeerCoordinator {
             })
         }));
 
-        self.peer_connections
-            .lock()
+        {
+            let mut pcs = self.peer_connections.lock().await;
+            if let Some(old) = pcs.insert(tab_id.clone(), pc.clone()) {
+                let _ = old.close().await;
+            }
+            self.tab_sources
+                .lock()
+                .await
+                .insert(tab_id.clone(), source_id.clone());
+        }
+
+        let offer = pc.create_offer(None).await.context("create_offer failed")?;
+        let offer_payload = serde_json::json!({
+            "type": "offer",
+            "sdp": offer.sdp,
+        });
+        pc.set_local_description(offer)
             .await
-            .insert(tab_id.clone(), pc);
-        self.tab_sources
-            .lock()
-            .await
-            .insert(tab_id, source_id);
+            .context("set_local_description failed")?;
+
+        signaling
+            .send(&OutboundMessage::SdpOffer {
+                source_id: source_id.clone(),
+                sdp: offer_payload,
+                target_connection_id: browser_connection_id.clone(),
+            })
+            .await?;
+
+        {
+            let mut registry = self.registry.lock().await;
+            if !registry.is_capture_running(&source_id) {
+                let injector_for_viewport = injector.clone();
+                let mut capture_config = registry.capture_config().clone();
+                capture_config.on_video_size = Some(Arc::new(move |width, height| {
+                    let injector = injector_for_viewport.clone();
+                    tokio::spawn(async move {
+                        let mut inj = injector.lock().await;
+                        if let Err(err) = inj.prepare_viewport(width, height) {
+                            warn!(%err, width, height, "failed to snap cursor to streamed display");
+                        }
+                    });
+                }));
+                let source = create_capturable(&source_id, &capture_config)
+                    .with_context(|| format!("failed to open capture source {source_id}"))?;
+                registry.start_capture_if_needed(&source_id, source, Some(capture_config))?;
+            }
+        }
 
         Ok(())
     }
