@@ -89,6 +89,10 @@ pub fn create_capturable(
         _ => anyhow::bail!("unknown source id {source_id}"),
     };
     let _ = config;
+    tracing::warn!(
+        source_id,
+        "using synthetic capture; rebuild with --features scap-capture for real display frames"
+    );
     Ok(Box::new(SyntheticCapturable::display(
         source_id,
         name,

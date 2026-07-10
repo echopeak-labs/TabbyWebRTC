@@ -21,4 +21,5 @@ export interface PairedAgent {
   platform: 'windows' | 'macos' | 'linux'
   publicKey: string
   lastSeen: string
+  localEndpoint?: string
 }

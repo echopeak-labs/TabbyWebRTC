@@ -9,6 +9,8 @@ use axum::{
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use ed25519_dalek::SigningKey;
+use qrcode::render::unicode::Dense1x2;
+use qrcode::QrCode;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{oneshot, RwLock};
@@ -61,7 +63,40 @@ fn detect_lan_ip() -> String {
     "127.0.0.1".into()
 }
 
-pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
+fn render_qr_body(data: &str) -> anyhow::Result<String> {
+    let code = QrCode::new(data.as_bytes()).context("failed to encode pairing QR")?;
+    Ok(code.render::<Dense1x2>().quiet_zone(true).build())
+}
+
+fn pad_qr_lines(qr: &str, pad: usize) -> Vec<String> {
+    let side = " ".repeat(pad);
+    let lines: Vec<&str> = qr.lines().collect();
+    let width = lines.iter().map(|line| line.chars().count()).max().unwrap_or(0) + pad * 2;
+    let blank = " ".repeat(width);
+    let mut out = Vec::with_capacity(lines.len() + pad * 2);
+    for _ in 0..pad {
+        out.push(blank.clone());
+    }
+    for line in lines {
+        out.push(format!("{side}{line}{side}"));
+    }
+    for _ in 0..pad {
+        out.push(blank.clone());
+    }
+    out
+}
+
+fn style_qr_lines(lines: &[String]) -> String {
+    const WHITE_BG_BLACK_FG: &str = "\x1b[48;5;231m\x1b[38;5;16m";
+    const RESET: &str = "\x1b[0m";
+    lines
+        .iter()
+        .map(|line| format!("{WHITE_BG_BLACK_FG}{line}{RESET}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<String> {
     let public_key_b64 = if let Some(existing) = keychain::get_pairing_public_key()? {
         existing
     } else {
@@ -87,11 +122,16 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
         pairing_nonce: pairing_nonce.clone(),
     };
     let qr_json = serde_json::to_string(&qr_payload).context("failed to serialize pairing QR")?;
+    let qr_terminal = style_qr_lines(&pad_qr_lines(&render_qr_body(&qr_json)?, 4));
 
     info!("No agent JWT found in OS keychain");
     println!();
     println!("TabbyWebRTC agent is not paired.");
-    println!("Scan this QR payload with the TabbyWebRTC mobile app (Pair a new machine):");
+    println!("Scan this QR with the TabbyWebRTC mobile app (Pair a new machine):");
+    println!();
+    println!("{qr_terminal}");
+    println!();
+    println!("QR payload (paste fallback):");
     println!("{qr_json}");
     println!();
     println!("Local pairing endpoint: {local_endpoint}/pair");
@@ -105,33 +145,43 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
         jwt_tx: Arc::new(RwLock::new(Some(jwt_tx))),
     };
 
-    let bind = format!("127.0.0.1:{}", config.http.thumbnail_port);
+    let bind_host = match config.http.bind.as_str() {
+        "127.0.0.1" | "localhost" => "0.0.0.0",
+        other => other,
+    };
+    let bind = format!("{}:{}", bind_host, config.http.thumbnail_port);
     let app = Router::new()
         .route("/pair", post(complete_pairing))
         .route("/pair/status", get(pairing_status))
-        .layer(CorsLayer::permissive())
+        .layer(CorsLayer::permissive().allow_private_network(true))
         .with_state(state.clone());
 
     let listener = tokio::net::TcpListener::bind(&bind)
         .await
         .with_context(|| format!("failed to bind pairing server on {bind}"))?;
 
+    let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     let server = tokio::spawn(async move {
-        if let Err(err) = axum::serve(listener, app).await {
+        let serve = axum::serve(listener, app).with_graceful_shutdown(async {
+            let _ = shutdown_rx.await;
+        });
+        if let Err(err) = serve.await {
             tracing::error!(%err, "pairing server failed");
         }
     });
 
     let poll_state = state.clone();
-    let api_url = config.signaling.api_url.clone();
+    let api_url = config.api_base_url();
     let agent_id = config.agent.id.clone();
     let poll_task = tokio::spawn(async move {
-        if api_url.trim().is_empty() {
+        if api_url.is_empty() {
+            tracing::warn!("pairing claim poll disabled: signaling.api_url is empty");
             return;
         }
+        info!(%api_url, "polling pair-claim fallback");
         let claim_url = format!(
             "{}/agents/pair-claim?agentId={}&nonce={}",
-            api_url.trim_end_matches('/'),
+            api_url,
             agent_id,
             pairing_nonce
         );
@@ -160,11 +210,12 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
         .context("pairing channel closed")?;
 
     poll_task.abort();
-    server.abort();
+    let _ = shutdown_tx.send(());
+    let _ = server.await;
 
     keychain::set_agent_jwt(&token)?;
-    println!("Pairing complete. Restart the agent to connect.");
-    Ok(())
+    println!("Pairing complete. Connecting…");
+    Ok(token)
 }
 
 #[derive(Deserialize)]

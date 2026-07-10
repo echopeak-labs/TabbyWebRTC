@@ -11,7 +11,10 @@ import { MessageRouterService } from '../shared/message-router.service';
 import { MessageSenderService } from '../shared/message-sender.service';
 import { WsConnectService } from './ws-connect.service';
 
-type TabbySocket = WebSocket & { connectionId?: string };
+type TabbySocket = WebSocket & {
+  connectionId?: string;
+  messageQueue?: Promise<void>;
+};
 
 @WebSocketGateway()
 export class SignalingGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -24,15 +27,35 @@ export class SignalingGateway implements OnGatewayConnection, OnGatewayDisconnec
   ) {}
 
   async handleConnection(client: TabbySocket, request: IncomingMessage): Promise<void> {
+    const earlyMessages: RawData[] = [];
+    const bufferEarly = (data: RawData) => {
+      earlyMessages.push(data);
+    };
+    client.on('message', bufferEarly);
+
     const result = await this.wsConnect.handleConnect(client, request);
+    client.off('message', bufferEarly);
+
     if (!result.ok) {
       return;
     }
     client.connectionId = result.connectionId;
+    client.messageQueue = Promise.resolve();
 
-    client.on('message', (data) => {
-      void this.handleMessage(client, data);
-    });
+    const enqueue = (data: RawData) => {
+      client.messageQueue = (client.messageQueue ?? Promise.resolve())
+        .then(() => this.handleMessage(client, data))
+        .catch((error) => {
+          const messageText = error instanceof Error ? error.message : 'Handler failed';
+          this.logger.warn(`WS queue error for ${client.connectionId}: ${messageText}`);
+        });
+    };
+
+    for (const data of earlyMessages) {
+      enqueue(data);
+    }
+
+    client.on('message', enqueue);
   }
 
   async handleDisconnect(client: TabbySocket): Promise<void> {

@@ -13,6 +13,7 @@ export class AuthController {
       pendingSessionId?: string;
       agentId?: string;
       encryptedSalt?: string;
+      localEndpoint?: { url: string; localToken: string };
     },
   ) {
     const clerkToken = extractBearerToken(authorization);
@@ -33,6 +34,7 @@ export class AuthController {
         body.pendingSessionId,
         body.agentId,
         body.encryptedSalt,
+        body.localEndpoint,
       );
       if (result.status !== 200) {
         throw new HttpException(result.body, result.status);

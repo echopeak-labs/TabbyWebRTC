@@ -1,25 +1,31 @@
 @import 'tailwindcss';
 
 @theme inline {
-  --color-background: #0a0a0a;
-  --color-foreground: #f5f5f5;
-  --color-card: #141414;
-  --color-card-foreground: #f5f5f5;
-  --color-popover: #1e1e1e;
-  --color-popover-foreground: #f5f5f5;
-  --color-primary: #f59e0b;
-  --color-primary-foreground: #0a0a0a;
-  --color-secondary: #1e1e1e;
-  --color-secondary-foreground: #f5f5f5;
-  --color-muted: #141414;
-  --color-muted-foreground: #737373;
-  --color-accent: #78350f;
-  --color-accent-foreground: #f5f5f5;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --color-background: #0c0b09;
+  --color-foreground: #f4efe6;
+  --color-card: #16130f;
+  --color-card-foreground: #f4efe6;
+  --color-popover: #1c1813;
+  --color-popover-foreground: #f4efe6;
+  --color-primary: #e8a317;
+  --color-primary-foreground: #140f08;
+  --color-secondary: #221c15;
+  --color-secondary-foreground: #f4efe6;
+  --color-muted: #1a1612;
+  --color-muted-foreground: #9a8f7e;
+  --color-accent: #3d2a12;
+  --color-accent-foreground: #f4efe6;
   --color-destructive: #ef4444;
-  --color-destructive-foreground: #f5f5f5;
-  --color-border: #2a2a2a;
-  --color-input: #2a2a2a;
-  --color-ring: #f59e0b;
+  --color-destructive-foreground: #f4efe6;
+  --color-border: #2c261e;
+  --color-input: #2c261e;
+  --color-ring: #e8a317;
+  --color-surface: #16130f;
+  --color-surfaceHigh: #221c15;
+  --color-textPrimary: #f4efe6;
+  --color-textMuted: #9a8f7e;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
@@ -27,40 +33,61 @@
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 96%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 8%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 21 78% 26%;
-    --accent-foreground: 0 0% 96%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 96%;
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 38 92% 50%;
-    --radius: 0.5rem;
-  }
-
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      'Helvetica Neue', Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
   }
+}
+
+@keyframes connect-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes connect-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes qr-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(232 163 23 / 0%);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgb(232 163 23 / 12%);
+  }
+}
+
+.animate-connect-breathe {
+  animation: connect-breathe 8s ease-in-out infinite;
+}
+
+.animate-connect-rise {
+  animation: connect-rise 0.55s ease-out both;
+}
+
+.animate-qr-pulse {
+  animation: qr-pulse 1.2s ease-out 1;
 }

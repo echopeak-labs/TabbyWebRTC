@@ -30,12 +30,16 @@ impl Agent {
     }
 
     pub async fn run(self) -> anyhow::Result<()> {
-        if keychain::get_agent_jwt()?.is_none() {
-            pairing::run_pairing_flow(&self.config).await?;
-            return Ok(());
-        }
-
-        let jwt = keychain::get_agent_jwt()?.context("agent JWT missing after keychain check")?;
+        let jwt = match keychain::get_agent_jwt()? {
+            Some(existing) => {
+                println!(
+                    "Already paired (agent_id={}). Starting…\nTo show the PAIR QR again, remove ~/.config/tabbywebrtc/credentials/ and restart.",
+                    self.config.agent.id
+                );
+                existing
+            }
+            None => pairing::run_pairing_flow(&self.config).await?,
+        };
         let public_key = keychain::get_pairing_public_key()?.unwrap_or_default();
         let pairing_private_key = keychain::get_pairing_private_key()?;
 
@@ -45,17 +49,27 @@ impl Agent {
         let (server_state, local_addr) =
             local_server::spawn(self.config.clone(), sources.clone()).context("local server failed")?;
 
-        local_server::advertise_mdns(self.config.http.thumbnail_port, &self.config.agent.name)
-            .await
-            .context("mDNS registration failed")?;
+        if let Err(err) = local_server::advertise_mdns(
+            self.config.http.thumbnail_port,
+            &self.config.agent.name,
+        )
+        .await
+        {
+            tracing::warn!(%err, "mDNS registration failed; continuing without LAN discovery");
+        }
 
         let source_updates = SourceEnumerator::spawn(sources.clone());
         let server_state_clone = server_state.clone();
         let signaling_agent_id = self.config.agent.id.clone();
         let signaling_public_key = public_key.clone();
-        let local_endpoint = format!("http://{local_addr}");
+        let local_endpoint = local_server::advertiseable_base_url(
+            local_addr,
+            self.config.http.thumbnail_port,
+        );
         let local_endpoint_for_updates = local_endpoint.clone();
         let shared_sources = server_state.sources.clone();
+
+        info!(%local_endpoint, "advertising local endpoint");
 
         let registration = AgentRegistration {
             agent_id: self.config.agent.id.clone(),
@@ -76,7 +90,8 @@ impl Agent {
             allow_remote_power: self.config.input.allow_remote_power,
         };
 
-        let turn = match turn::fetch_turn_config(&self.config.signaling.api_url, &jwt).await {
+        let api_base = self.config.api_base_url();
+        let turn = match turn::fetch_turn_config(&api_base, &jwt).await {
             Ok(turn) => turn,
             Err(err) => {
                 tracing::warn!(%err, "TURN credentials unavailable, continuing with STUN only");

@@ -240,21 +240,35 @@ export function useInputChannel(options: UseInputChannelOptions): UseInputChanne
     const video = videoRef.current
     if (!video || !inputChannel) return
 
-    const onMouseMoveAbsolute = (event: MouseEvent) => {
+    const onMouseMoveAbsolute = (event: PointerEvent | MouseEvent) => {
       if (modeRef.current !== 'absolute') return
       const now = performance.now()
       if (now - lastMouseMoveRef.current < MOUSE_MOVE_INTERVAL_MS) return
-      lastMouseMoveRef.current = now
 
-      updateLocalCursor(event, video)
-      const { x, y } = getAbsoluteCoordinates(event, video, nativeWidth, nativeHeight)
+      const rect = video.getBoundingClientRect()
+      if (
+        event.clientX < rect.left ||
+        event.clientX > rect.right ||
+        event.clientY < rect.top ||
+        event.clientY > rect.bottom
+      ) {
+        return
+      }
+
+      lastMouseMoveRef.current = now
+      updateLocalCursor(event as MouseEvent, video)
+      const width = video.videoWidth > 0 ? video.videoWidth : nativeWidth
+      const height = video.videoHeight > 0 ? video.videoHeight : nativeHeight
+      const { x, y } = getAbsoluteCoordinates(event as MouseEvent, video, width, height)
       sendInput(inputChannel, { type: 'MOUSE_MOVE_ABS', x, y })
     }
 
     const onMouseDown = (event: MouseEvent) => {
       if (modeRef.current !== 'absolute') return
       event.preventDefault()
-      const { x, y } = getAbsoluteCoordinates(event, video, nativeWidth, nativeHeight)
+      const width = video.videoWidth > 0 ? video.videoWidth : nativeWidth
+      const height = video.videoHeight > 0 ? video.videoHeight : nativeHeight
+      const { x, y } = getAbsoluteCoordinates(event, video, width, height)
       sendInput(inputChannel, {
         type: 'MOUSE_DOWN',
         button: domButtonToPayload(event.button),
@@ -265,7 +279,9 @@ export function useInputChannel(options: UseInputChannelOptions): UseInputChanne
 
     const onMouseUp = (event: MouseEvent) => {
       if (modeRef.current !== 'absolute') return
-      const { x, y } = getAbsoluteCoordinates(event, video, nativeWidth, nativeHeight)
+      const width = video.videoWidth > 0 ? video.videoWidth : nativeWidth
+      const height = video.videoHeight > 0 ? video.videoHeight : nativeHeight
+      const { x, y } = getAbsoluteCoordinates(event, video, width, height)
       sendInput(inputChannel, {
         type: 'MOUSE_UP',
         button: domButtonToPayload(event.button),
@@ -293,7 +309,7 @@ export function useInputChannel(options: UseInputChannelOptions): UseInputChanne
       }
     }
 
-    video.addEventListener('mousemove', onMouseMoveAbsolute)
+    document.addEventListener('pointermove', onMouseMoveAbsolute)
     video.addEventListener('mousedown', onMouseDown)
     video.addEventListener('mouseup', onMouseUp)
     video.addEventListener('wheel', onWheel, { passive: false })
@@ -301,7 +317,7 @@ export function useInputChannel(options: UseInputChannelOptions): UseInputChanne
     video.addEventListener('mouseleave', onMouseLeave)
 
     return () => {
-      video.removeEventListener('mousemove', onMouseMoveAbsolute)
+      document.removeEventListener('pointermove', onMouseMoveAbsolute)
       video.removeEventListener('mousedown', onMouseDown)
       video.removeEventListener('mouseup', onMouseUp)
       video.removeEventListener('wheel', onWheel)

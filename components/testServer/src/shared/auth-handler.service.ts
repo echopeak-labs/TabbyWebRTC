@@ -31,6 +31,7 @@ export class AuthHandlerService {
     pendingSessionId: string,
     agentId: string,
     encryptedSalt?: string,
+    localEndpoint?: { url: string; localToken: string },
   ): Promise<{ status: number; body: object }> {
     const { userId } = await verifyClerkJwt(clerkToken);
     const session = this.pendingSessions.getPendingSession(pendingSessionId);
@@ -56,11 +57,26 @@ export class AuthHandlerService {
       ...(encryptedSalt ? { encryptedSalt } : {}),
     });
 
+    const resolvedLocal =
+      localEndpoint?.url && localEndpoint.localToken
+        ? localEndpoint
+        : agent.localEndpoint
+          ? { url: agent.localEndpoint, localToken: '' }
+          : undefined;
+
     await this.messageSender.sendToConnection(session.connectionId, {
       type: 'AUTH_APPROVED',
       token,
       agentId,
       ...(encryptedSalt ? { encryptedSalt } : {}),
+      ...(resolvedLocal?.url
+        ? {
+            localEndpoint: {
+              url: resolvedLocal.url,
+              ...(resolvedLocal.localToken ? { localToken: resolvedLocal.localToken } : {}),
+            },
+          }
+        : {}),
     });
 
     return { status: 200, body: { ok: true } };

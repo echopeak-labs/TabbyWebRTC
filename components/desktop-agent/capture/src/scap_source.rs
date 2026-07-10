@@ -92,10 +92,18 @@ impl crate::Capturable for ScapCapturable {
         let mut capturer = scap::capturer::Capturer::build(options)
             .map_err(|e| anyhow::anyhow!("failed to build capturer: {e}"))?;
         let size = capturer.get_output_frame_size();
-        self.width = size[0];
-        self.height = size[1];
+        if size[0] > 0 && size[1] > 0 {
+            self.width = size[0];
+            self.height = size[1];
+        }
         capturer.start_capture();
         self.capturer = Some(capturer);
+        tracing::info!(
+            source_id = %self.id,
+            width = self.width,
+            height = self.height,
+            "scap capturer started"
+        );
         Ok(())
     }
 
@@ -109,7 +117,7 @@ impl crate::Capturable for ScapCapturable {
     }
 
     fn next_frame(&mut self) -> anyhow::Result<Frame> {
-        use scap::frame::{Frame as ScapFrame, VideoFrame};
+        use scap::frame::Frame as ScapFrame;
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let capturer = self
@@ -125,33 +133,7 @@ impl crate::Capturable for ScapCapturable {
             .as_micros() as u64;
 
         match scap_frame {
-            ScapFrame::Video(video) => match video {
-                VideoFrame::BGRA(bgra) => Ok(Frame {
-                    data: bgra.data,
-                    format: PixelFormat::BGRA,
-                    width: bgra.width as u32,
-                    height: bgra.height as u32,
-                    timestamp_us,
-                }),
-                VideoFrame::YUVFrame(yuv) => {
-                    let mut nv12 = Vec::with_capacity(
-                        yuv.luminance_bytes.len() + yuv.chrominance_bytes.len(),
-                    );
-                    nv12.extend_from_slice(&yuv.luminance_bytes);
-                    nv12.extend_from_slice(&yuv.chrominance_bytes);
-                    Ok(Frame {
-                        data: nv12,
-                        format: PixelFormat::NV12,
-                        width: yuv.width as u32,
-                        height: yuv.height as u32,
-                        timestamp_us,
-                    })
-                }
-                other => {
-                    tracing::warn!(?other, "unsupported scap frame type");
-                    anyhow::bail!("unsupported video frame format")
-                }
-            },
+            ScapFrame::Video(video) => Ok(video_frame_to_frame(video, timestamp_us)?),
             ScapFrame::Audio(_) => anyhow::bail!("unexpected audio frame"),
         }
     }
@@ -176,6 +158,133 @@ impl crate::Capturable for ScapCapturable {
         }
         Ok(jpeg)
     }
+}
+
+#[cfg(feature = "scap-capture")]
+fn video_frame_to_frame(
+    video: scap::frame::VideoFrame,
+    timestamp_us: u64,
+) -> anyhow::Result<Frame> {
+    use scap::frame::VideoFrame;
+    match video {
+        VideoFrame::BGRA(bgra) => Ok(Frame {
+            data: pack_bgra_rows(bgra.data, bgra.width as u32, bgra.height as u32, 4)?,
+            format: PixelFormat::BGRA,
+            width: bgra.width as u32,
+            height: bgra.height as u32,
+            timestamp_us,
+        }),
+        VideoFrame::BGR0(bgr) => Ok(Frame {
+            data: pack_bgra_rows(bgr.data, bgr.width as u32, bgr.height as u32, 4)?,
+            format: PixelFormat::BGRA,
+            width: bgr.width as u32,
+            height: bgr.height as u32,
+            timestamp_us,
+        }),
+        VideoFrame::BGRx(bgrx) => {
+            let mut data = pack_bgra_rows(bgrx.data, bgrx.width as u32, bgrx.height as u32, 4)?;
+            for px in data.chunks_exact_mut(4) {
+                px[3] = 255;
+            }
+            Ok(Frame {
+                data,
+                format: PixelFormat::BGRA,
+                width: bgrx.width as u32,
+                height: bgrx.height as u32,
+                timestamp_us,
+            })
+        }
+        VideoFrame::RGBx(rgbx) => {
+            let packed = pack_bgra_rows(rgbx.data, rgbx.width as u32, rgbx.height as u32, 4)?;
+            let mut data = Vec::with_capacity(packed.len());
+            for px in packed.chunks_exact(4) {
+                data.extend_from_slice(&[px[2], px[1], px[0], 255]);
+            }
+            Ok(Frame {
+                data,
+                format: PixelFormat::BGRA,
+                width: rgbx.width as u32,
+                height: rgbx.height as u32,
+                timestamp_us,
+            })
+        }
+        VideoFrame::RGB(rgb) => {
+            let w = rgb.width as u32;
+            let h = rgb.height as u32;
+            let packed = pack_rgb_rows(rgb.data, w, h)?;
+            let mut data = Vec::with_capacity((w * h * 4) as usize);
+            for px in packed.chunks_exact(3) {
+                data.extend_from_slice(&[px[2], px[1], px[0], 255]);
+            }
+            Ok(Frame {
+                data,
+                format: PixelFormat::BGRA,
+                width: w,
+                height: h,
+                timestamp_us,
+            })
+        }
+        VideoFrame::XBGR(xbgr) => {
+            let packed = pack_bgra_rows(xbgr.data, xbgr.width as u32, xbgr.height as u32, 4)?;
+            let mut data = Vec::with_capacity(packed.len());
+            for px in packed.chunks_exact(4) {
+                data.extend_from_slice(&[px[1], px[2], px[3], 255]);
+            }
+            Ok(Frame {
+                data,
+                format: PixelFormat::BGRA,
+                width: xbgr.width as u32,
+                height: xbgr.height as u32,
+                timestamp_us,
+            })
+        }
+        VideoFrame::YUVFrame(yuv) => {
+            let mut nv12 =
+                Vec::with_capacity(yuv.luminance_bytes.len() + yuv.chrominance_bytes.len());
+            nv12.extend_from_slice(&yuv.luminance_bytes);
+            nv12.extend_from_slice(&yuv.chrominance_bytes);
+            Ok(Frame {
+                data: nv12,
+                format: PixelFormat::NV12,
+                width: yuv.width as u32,
+                height: yuv.height as u32,
+                timestamp_us,
+            })
+        }
+    }
+}
+
+#[cfg(feature = "scap-capture")]
+fn pack_bgra_rows(data: Vec<u8>, width: u32, height: u32, bpp: u32) -> anyhow::Result<Vec<u8>> {
+    let row_bytes = (width * bpp) as usize;
+    let expected = row_bytes * height as usize;
+    if data.len() == expected {
+        return Ok(data);
+    }
+    if height == 0 || data.len() % height as usize != 0 {
+        anyhow::bail!(
+            "unexpected frame buffer size {} for {}x{} bpp={}",
+            data.len(),
+            width,
+            height,
+            bpp
+        );
+    }
+    let stride = data.len() / height as usize;
+    if stride < row_bytes {
+        anyhow::bail!("frame stride {stride} smaller than row bytes {row_bytes}");
+    }
+    let mut packed = Vec::with_capacity(expected);
+    for y in 0..height as usize {
+        let start = y * stride;
+        packed.extend_from_slice(&data[start..start + row_bytes]);
+    }
+    Ok(packed)
+}
+
+#[cfg(feature = "scap-capture")]
+fn pack_rgb_rows(data: Vec<u8>, width: u32, height: u32) -> anyhow::Result<Vec<u8>> {
+    pack_bgra_rows(data, width, height, 3)
 }
 
 #[cfg(feature = "scap-capture")]

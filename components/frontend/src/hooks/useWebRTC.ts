@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { signalClient } from '@/lib/signal-client'
 import { showToast } from '@/lib/toast'
 import {
-  createInputChannel,
   createPeerConnection,
   getTabId,
   sleep,
@@ -29,7 +28,14 @@ export interface UseWebRTCReturn {
   disconnect: () => void
 }
 
-function isSignalMessage(msg: { type: string }): msg is InboundSignalMessage {
+function isStreamSignalMessage(msg: { type: string }): msg is Extract<
+  InboundSignalMessage,
+  | { type: 'SDP_OFFER' }
+  | { type: 'ICE_CANDIDATE' }
+  | { type: 'STREAM_READY' }
+  | { type: 'SOURCE_IN_USE' }
+  | { type: 'STREAM_CLOSED' }
+> {
   return (
     msg.type === 'SDP_OFFER' ||
     msg.type === 'ICE_CANDIDATE' ||
@@ -37,6 +43,22 @@ function isSignalMessage(msg: { type: string }): msg is InboundSignalMessage {
     msg.type === 'SOURCE_IN_USE' ||
     msg.type === 'STREAM_CLOSED'
   )
+}
+
+function toSessionDescription(
+  sdp: RTCSessionDescriptionInit | string,
+  fallbackType: RTCSdpType,
+): RTCSessionDescriptionInit {
+  if (typeof sdp === 'string') {
+    return { type: fallbackType, sdp }
+  }
+  if (sdp && typeof sdp === 'object' && typeof sdp.sdp === 'string') {
+    return {
+      type: sdp.type ?? fallbackType,
+      sdp: sdp.sdp,
+    }
+  }
+  throw new Error('Invalid SDP payload')
 }
 
 export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
@@ -51,17 +73,29 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
   const channelRef = useRef<RTCDataChannel | null>(null)
   const iceRetryCount = useRef(0)
   const disconnectedRef = useRef(false)
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
+  const remoteDescriptionSetRef = useRef(false)
   const optionsRef = useRef(options)
   const disconnectRef = useRef<() => void>(() => {})
   optionsRef.current = options
 
   const setSourceInUse = useAgentStore((s) => s.setSourceInUse)
 
+  const flushPendingIce = useCallback(async (pc: RTCPeerConnection) => {
+    const pending = pendingIceRef.current
+    pendingIceRef.current = []
+    for (const candidate of pending) {
+      await pc.addIceCandidate(candidate)
+    }
+  }, [])
+
   const teardownPc = useCallback(() => {
     channelRef.current?.close()
     channelRef.current = null
     pcRef.current?.close()
     pcRef.current = null
+    pendingIceRef.current = []
+    remoteDescriptionSetRef.current = false
     setPeerConnection(null)
     setInputChannel(null)
     setConnectionState('closed')
@@ -71,12 +105,13 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     teardownPc()
 
     const pc = await createPeerConnection(token)
-    const channel = createInputChannel(pc)
 
     pcRef.current = pc
-    channelRef.current = channel
+    channelRef.current = null
+    remoteDescriptionSetRef.current = false
+    pendingIceRef.current = []
     setPeerConnection(pc)
-    setInputChannel(channel)
+    setInputChannel(null)
     setConnectionState(pc.connectionState)
 
     pc.onconnectionstatechange = () => {
@@ -105,10 +140,8 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     }
 
     pc.ontrack = (event) => {
-      const stream = event.streams[0]
-      if (stream) {
-        optionsRef.current.onStream(stream)
-      }
+      const stream = event.streams[0] ?? new MediaStream([event.track])
+      optionsRef.current.onStream(stream)
     }
 
     pc.onicecandidate = (event) => {
@@ -118,9 +151,18 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     }
 
     pc.ondatachannel = (event) => {
-      if (event.channel.label === 'input_stream') {
-        channelRef.current = event.channel
-        setInputChannel(event.channel)
+      if (event.channel.label !== 'input_stream') {
+        return
+      }
+      const channel = event.channel
+      const adopt = () => {
+        channelRef.current = channel
+        setInputChannel(channel)
+      }
+      if (channel.readyState === 'open') {
+        adopt()
+      } else {
+        channel.addEventListener('open', adopt, { once: true })
       }
     }
 
@@ -142,6 +184,8 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
   useEffect(() => {
     disconnectedRef.current = false
     iceRetryCount.current = 0
+    pendingIceRef.current = []
+    remoteDescriptionSetRef.current = false
 
     if (!signalClient.isConnected) {
       signalClient.connect()
@@ -150,7 +194,7 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     let mounted = true
 
     const handleMessage = async (message: { type: string }) => {
-      if (!isSignalMessage(message)) {
+      if (!isStreamSignalMessage(message)) {
         return
       }
 
@@ -162,17 +206,28 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
         case 'SDP_OFFER': {
           const pc = pcRef.current ?? (await setupPeerConnection())
           if (!mounted) return
-          await pc.setRemoteDescription(message.sdp)
+          const offer = toSessionDescription(message.sdp, 'offer')
+          await pc.setRemoteDescription(offer)
+          remoteDescriptionSetRef.current = true
+          await flushPendingIce(pc)
           const answer = await pc.createAnswer()
           await pc.setLocalDescription(answer)
-          signalClient.sendSdpAnswer(sourceId, answer)
+          signalClient.sendSdpAnswer(sourceId, {
+            type: answer.type,
+            sdp: answer.sdp,
+          })
           break
         }
         case 'ICE_CANDIDATE': {
           const pc = pcRef.current
-          if (pc && message.candidate) {
-            await pc.addIceCandidate(message.candidate)
+          if (!pc || !message.candidate) {
+            break
           }
+          if (!remoteDescriptionSetRef.current) {
+            pendingIceRef.current.push(message.candidate)
+            break
+          }
+          await pc.addIceCandidate(message.candidate)
           break
         }
         case 'SOURCE_IN_USE': {
@@ -218,7 +273,16 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
       signalClient.unsubscribeFromSource(sourceId, tabId)
       teardownPc()
     }
-  }, [disconnect, setSourceInUse, setupPeerConnection, sourceId, tabId, teardownPc, token])
+  }, [
+    disconnect,
+    flushPendingIce,
+    setSourceInUse,
+    setupPeerConnection,
+    sourceId,
+    tabId,
+    teardownPc,
+    token,
+  ])
 
   return {
     peerConnection,

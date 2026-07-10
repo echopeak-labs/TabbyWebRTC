@@ -24,7 +24,12 @@ export class ConnectionStore {
   }
 
   findAgentConnectionId(agentId: string): string | undefined {
-    return this.findByAgentId(agentId, 'agent')[0]?.connectionId;
+    const agents = this.findByAgentId(agentId, 'agent');
+    if (agents.length === 0) {
+      return undefined;
+    }
+    agents.sort((a, b) => b.connectedAt - a.connectedAt);
+    return agents[0]?.connectionId;
   }
 
   clear(): void {

@@ -31,6 +31,23 @@ pub struct SignalingSection {
     pub api_url: String,
 }
 
+impl AgentConfig {
+    pub fn api_base_url(&self) -> String {
+        let configured = self.signaling.api_url.trim();
+        if !configured.is_empty() {
+            return configured.trim_end_matches('/').to_string();
+        }
+        let ws = self.signaling.url.trim();
+        if let Some(rest) = ws.strip_prefix("ws://") {
+            return format!("http://{}", rest.trim_end_matches('/'));
+        }
+        if let Some(rest) = ws.strip_prefix("wss://") {
+            return format!("https://{}", rest.trim_end_matches('/'));
+        }
+        String::new()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CaptureSection {
     pub encoder: String,
@@ -125,7 +142,7 @@ impl Default for AgentConfig {
             },
             http: HttpSection {
                 thumbnail_port: 7700,
-                bind: "127.0.0.1".into(),
+                bind: "0.0.0.0".into(),
             },
             input: InputSection::default(),
             updates: UpdatesSection::default(),

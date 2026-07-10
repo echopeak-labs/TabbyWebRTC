@@ -84,6 +84,7 @@ case "$PLATFORM_KEY" in
     candle -nologo -arch x64 \
       -dVersion="$WIX_VERSION" \
       -dAgentBinary="$BIN" \
+      -dAgentIcon="$ROOT/packaging/icons/icon.ico" \
       -out "$WIX_DIR/main.wixobj" \
       "$WIX_DIR/main.wxs"
     light -nologo \

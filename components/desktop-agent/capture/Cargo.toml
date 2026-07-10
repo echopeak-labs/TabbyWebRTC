@@ -21,7 +21,7 @@ scap-capture = ["scap"]
 hardware-encode = ["ffmpeg-next"]
 
 [dependencies.scap]
-version = "0.1.0-beta.1"
+path = "../vendor/scap"
 optional = true
 
 [dependencies.ffmpeg-next]

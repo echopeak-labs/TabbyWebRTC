@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=agent-features.sh
+source "$ROOT/scripts/agent-features.sh"
 AGENT="$ROOT/components/desktop-agent"
 
 VERSION="$(grep '^package.version' "$AGENT/Cargo.toml" | head -1 | sed 's/.*= "\(.*\)".*/\1/')"
@@ -32,7 +34,17 @@ case "$OS-$ARCH" in
     ;;
 esac
 
-cargo build --release --target "$TARGET" --manifest-path "$AGENT/Cargo.toml"
+FEATURES="$(agent_cargo_features)"
+FEATURE_ARGS=()
+if [[ -n "$FEATURES" ]]; then
+  FEATURE_ARGS=(--features "${FEATURES},software-encode")
+else
+  echo "libpipewire-0.3 not found; packaging without scap-capture." >&2
+  echo "Install: sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev pkg-config" >&2
+  FEATURE_ARGS=(--features software-encode)
+fi
+
+cargo build --release "${FEATURE_ARGS[@]}" --target "$TARGET" --manifest-path "$AGENT/Cargo.toml" -p tabbywebrtc-agent
 
 SRC="$AGENT/target/$TARGET/release/tabbywebrtc-agent"
 DEST="$AGENT/tabbywebrtc-agent-$PLATFORM_KEY"

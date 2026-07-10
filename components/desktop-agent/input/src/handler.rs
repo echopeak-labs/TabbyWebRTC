@@ -25,43 +25,12 @@ impl Default for InputPolicy {
     }
 }
 
-enum MouseMovePayload {
-    Abs { x: i32, y: i32 },
-    Rel { dx: i32, dy: i32 },
-}
-
 pub async fn run_input_handler(
     data_channel: Arc<RTCDataChannel>,
     injector: Arc<Mutex<Box<dyn InputInjector>>>,
     policy: InputPolicy,
 ) {
     let (keyboard_tx, mut keyboard_rx) = mpsc::channel(KEYBOARD_QUEUE_DEPTH);
-    let mouse_slot = Arc::new(Mutex::new(None::<MouseMovePayload>));
-    let mouse_notify = Arc::new(tokio::sync::Notify::new());
-
-    let mouse_injector = injector.clone();
-    let mouse_slot_worker = mouse_slot.clone();
-    let mouse_notify_worker = mouse_notify.clone();
-    tokio::spawn(async move {
-        loop {
-            mouse_notify_worker.notified().await;
-            let payload = {
-                let mut slot = mouse_slot_worker.lock().await;
-                slot.take()
-            };
-            let Some(payload) = payload else {
-                continue;
-            };
-            let mut inj = mouse_injector.lock().await;
-            let result = match payload {
-                MouseMovePayload::Abs { x, y } => inj.mouse_move_abs(x, y),
-                MouseMovePayload::Rel { dx, dy } => inj.mouse_move_rel(dx, dy),
-            };
-            if let Err(err) = result {
-                warn!(?err, "mouse injection failed");
-            }
-        }
-    });
 
     let keyboard_injector = injector.clone();
     tokio::spawn(async move {
@@ -76,8 +45,6 @@ pub async fn run_input_handler(
     let keyboard_tx = Arc::new(Mutex::new(keyboard_tx));
     data_channel.on_message(Box::new(move |msg: DataChannelMessage| {
         let keyboard_tx = keyboard_tx.clone();
-        let mouse_slot = mouse_slot.clone();
-        let mouse_notify = mouse_notify.clone();
         let injector = injector.clone();
         Box::pin(async move {
             if !policy.enabled {
@@ -94,16 +61,6 @@ pub async fn run_input_handler(
             };
 
             match payload {
-                InputPayload::MouseMoveAbs { x, y } => {
-                    let mut slot = mouse_slot.lock().await;
-                    *slot = Some(MouseMovePayload::Abs { x, y });
-                    mouse_notify.notify_one();
-                }
-                InputPayload::MouseMoveRel { dx, dy } => {
-                    let mut slot = mouse_slot.lock().await;
-                    *slot = Some(MouseMovePayload::Rel { dx, dy });
-                    mouse_notify.notify_one();
-                }
                 InputPayload::KeyDown { .. } | InputPayload::KeyUp { .. } => {
                     let tx = keyboard_tx.lock().await;
                     if tx.try_send(payload).is_err() {

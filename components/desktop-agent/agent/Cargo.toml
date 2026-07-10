@@ -21,6 +21,7 @@ input = { path = "../input" }
 jsonwebtoken.workspace = true
 keyring.workspace = true
 mdns-sd.workspace = true
+qrcode.workspace = true
 rand.workspace = true
 reqwest.workspace = true
 semver.workspace = true
@@ -36,18 +37,6 @@ tracing-subscriber.workspace = true
 uuid.workspace = true
 webrtc_peer = { path = "../webrtc_peer" }
 
-[dependencies.openh264]
-workspace = true
-optional = true
-
-[dependencies.ffmpeg-next]
-version = "7"
-optional = true
-
-[dependencies.scap]
-version = "0.1.0-beta.1"
-optional = true
-
 [dependencies.webrtc]
 workspace = true
 
@@ -56,6 +45,6 @@ workspace = true
 
 [features]
 default = []
-hardware-encode = ["ffmpeg-next"]
-scap-capture = ["scap"]
-software-encode = ["openh264"]
+hardware-encode = ["capture/hardware-encode"]
+scap-capture = ["capture/scap-capture"]
+software-encode = []

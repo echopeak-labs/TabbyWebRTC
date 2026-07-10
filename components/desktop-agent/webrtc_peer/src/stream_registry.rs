@@ -10,7 +10,7 @@ use crate::config::h264_track_codec;
 
 struct ActiveStream {
     track: Arc<TrackLocalStaticSample>,
-    capture_shutdown: CancellationToken,
+    capture_shutdown: Option<CancellationToken>,
     subscriber_count: usize,
 }
 
@@ -42,7 +42,6 @@ impl StreamRegistry {
     pub fn get_or_create_track(
         &mut self,
         source_id: &str,
-        source: Box<dyn Capturable>,
     ) -> anyhow::Result<Arc<TrackLocalStaticSample>> {
         if let Some(stream) = self.streams.get(source_id) {
             return Ok(stream.track.clone());
@@ -54,8 +53,40 @@ impl StreamRegistry {
             source_id.to_string(),
         ));
 
+        info!(source_id, "created video track");
+        self.streams.insert(
+            source_id.to_string(),
+            ActiveStream {
+                track: track.clone(),
+                capture_shutdown: None,
+                subscriber_count: 0,
+            },
+        );
+
+        Ok(track)
+    }
+
+    pub fn is_capture_running(&self, source_id: &str) -> bool {
+        self.streams
+            .get(source_id)
+            .map(|s| s.capture_shutdown.is_some())
+            .unwrap_or(false)
+    }
+
+    pub fn start_capture_if_needed(
+        &mut self,
+        source_id: &str,
+        source: Box<dyn Capturable>,
+    ) -> anyhow::Result<()> {
+        let Some(stream) = self.streams.get_mut(source_id) else {
+            anyhow::bail!("track missing for {source_id}");
+        };
+        if stream.capture_shutdown.is_some() {
+            return Ok(());
+        }
+
         let shutdown = CancellationToken::new();
-        let track_for_loop = track.clone();
+        let track_for_loop = stream.track.clone();
         let shutdown_for_loop = shutdown.clone();
         let config = self.capture_config.clone();
         let source_id_owned = source_id.to_string();
@@ -68,17 +99,9 @@ impl StreamRegistry {
             }
         });
 
+        stream.capture_shutdown = Some(shutdown);
         info!(source_id, "started capture stream");
-        self.streams.insert(
-            source_id.to_string(),
-            ActiveStream {
-                track: track.clone(),
-                capture_shutdown: shutdown,
-                subscriber_count: 0,
-            },
-        );
-
-        Ok(track)
+        Ok(())
     }
 
     pub fn add_subscriber(&mut self, source_id: &str) {
@@ -101,7 +124,9 @@ impl StreamRegistry {
 
         if should_remove {
             if let Some(stream) = self.streams.remove(source_id) {
-                stream.capture_shutdown.cancel();
+                if let Some(shutdown) = stream.capture_shutdown {
+                    shutdown.cancel();
+                }
                 info!(source_id, "capture stream stopped");
             }
         }

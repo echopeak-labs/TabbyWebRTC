@@ -76,7 +76,7 @@ pub fn spawn(
         .route("/sources", get(sources_handler))
         .route("/thumbnail/:source_id", get(thumbnail_handler))
         .route("/signal", get(signal_ws_handler))
-        .layer(CorsLayer::permissive())
+        .layer(CorsLayer::permissive().allow_private_network(true))
         .with_state(state.clone());
 
     let listener = std::net::TcpListener::bind(bind).context("failed to bind local server")?;
@@ -92,6 +92,15 @@ pub fn spawn(
 
     info!(%addr, "local server listening");
     Ok((state, addr))
+}
+
+pub fn advertiseable_base_url(bind_addr: SocketAddr, port: u16) -> String {
+    let ip = bind_addr.ip();
+    if ip.is_unspecified() || ip.is_loopback() {
+        format!("http://{}:{port}", detect_lan_ip())
+    } else {
+        format!("http://{ip}:{port}")
+    }
 }
 
 fn token_for_window(secret: &[u8; 32], agent_id: &str, window: u64) -> String {
@@ -199,21 +208,34 @@ async fn signal_ws_handler(
 
 pub async fn advertise_mdns(port: u16, agent_name: &str) -> anyhow::Result<()> {
     let service_type = "_tabbywebrtc._tcp.local.";
-    let instance = format!("{}.{}", agent_name.replace(' ', "-"), service_type);
+    let instance = agent_name.replace(' ', "-");
     let mdns = mdns_sd::ServiceDaemon::new().context("failed to start mDNS daemon")?;
-    let host = "tabbywebrtc-agent.local";
+    let host = "tabbywebrtc-agent.local.";
+    let lan_ip = detect_lan_ip();
 
     let properties = [("version", webrtc_peer::version())];
     mdns.register(mdns_sd::ServiceInfo::new(
         service_type,
         &instance,
-        &host,
-        "",
+        host,
+        lan_ip.as_str(),
         port,
         &properties[..],
     )?)
     .context("failed to register mDNS service")?;
 
-    info!(port, "mDNS service registered");
+    info!(port, %lan_ip, "mDNS service registered");
+    std::mem::forget(mdns);
     Ok(())
+}
+
+fn detect_lan_ip() -> String {
+    if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(addr) = socket.local_addr() {
+                return addr.ip().to_string();
+            }
+        }
+    }
+    "127.0.0.1".into()
 }

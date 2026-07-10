@@ -119,20 +119,9 @@ impl PeerCoordinator {
         }
         let track = {
             let mut registry = self.registry.lock().await;
-            if registry.has_stream(&source_id) {
-                let track = registry
-                    .get_track(&source_id)
-                    .context("stream missing after has_stream")?;
-                registry.add_subscriber(&source_id);
-                track
-            } else {
-                let capture_config = registry.capture_config().clone();
-                let source = create_capturable(&source_id, &capture_config)
-                    .with_context(|| format!("failed to open capture source {source_id}"))?;
-                let track = registry.get_or_create_track(&source_id, source)?;
-                registry.add_subscriber(&source_id);
-                track
-            }
+            let track = registry.get_or_create_track(&source_id)?;
+            registry.add_subscriber(&source_id);
+            track
         };
 
         let pc = self.create_peer_connection().await?;
@@ -140,6 +129,16 @@ impl PeerCoordinator {
             .add_track(track as Arc<dyn TrackLocal + Send + Sync>)
             .await
             .context("add_track failed")?;
+
+        {
+            let mut registry = self.registry.lock().await;
+            if !registry.is_capture_running(&source_id) {
+                let capture_config = registry.capture_config().clone();
+                let source = create_capturable(&source_id, &capture_config)
+                    .with_context(|| format!("failed to open capture source {source_id}"))?;
+                registry.start_capture_if_needed(&source_id, source)?;
+            }
+        }
 
         let mut rtcp_buf = vec![0u8; 1500];
         tokio::spawn(async move {
@@ -162,7 +161,10 @@ impl PeerCoordinator {
         run_input_handler(data_channel, injector, self.input_policy).await;
 
         let offer = pc.create_offer(None).await.context("create_offer failed")?;
-        let offer_sdp = offer.sdp.clone();
+        let offer_payload = serde_json::json!({
+            "type": "offer",
+            "sdp": offer.sdp,
+        });
         pc.set_local_description(offer)
             .await
             .context("set_local_description failed")?;
@@ -170,7 +172,7 @@ impl PeerCoordinator {
         signaling
             .send(&OutboundMessage::SdpOffer {
                 source_id: source_id.clone(),
-                sdp: offer_sdp,
+                sdp: offer_payload,
                 target_connection_id: browser_connection_id.clone(),
             })
             .await?;
@@ -251,7 +253,11 @@ impl PeerCoordinator {
         Ok(())
     }
 
-    async fn handle_sdp_answer(self: &Arc<Self>, tab_id: &str, sdp: &str) -> anyhow::Result<()> {
+    async fn handle_sdp_answer(
+        self: &Arc<Self>,
+        tab_id: &str,
+        sdp: &serde_json::Value,
+    ) -> anyhow::Result<()> {
         let pc = self
             .peer_connections
             .lock()
@@ -260,7 +266,15 @@ impl PeerCoordinator {
             .cloned()
             .with_context(|| format!("no peer connection for tab {tab_id}"))?;
 
-        let answer = RTCSessionDescription::answer(sdp.to_owned())?;
+        let sdp_str = if let Some(text) = sdp.as_str() {
+            text.to_owned()
+        } else if let Some(text) = sdp.get("sdp").and_then(|value| value.as_str()) {
+            text.to_owned()
+        } else {
+            anyhow::bail!("SDP_ANSWER missing sdp string");
+        };
+
+        let answer = RTCSessionDescription::answer(sdp_str)?;
         pc.set_remote_description(answer)
             .await
             .context("set_remote_description failed")?;

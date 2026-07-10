@@ -6,7 +6,7 @@ export type OutboundSignalMessage =
   | { type: 'REQUEST_SOURCES'; agentId: string }
 
 export type InboundSignalMessage =
-  | { type: 'SDP_OFFER'; sourceId: string; sdp: RTCSessionDescriptionInit }
+  | { type: 'SDP_OFFER'; sourceId: string; sdp: RTCSessionDescriptionInit | string }
   | { type: 'ICE_CANDIDATE'; sourceId: string; candidate: RTCIceCandidateInit }
   | { type: 'STREAM_READY'; sourceId: string }
   | { type: 'SOURCE_IN_USE'; sourceId: string; tabId: string }
@@ -23,6 +23,12 @@ export type InboundSignalMessage =
 export type DesktopInboundMessage =
   | InboundSignalMessage
   | { type: 'SESSION_PENDING'; pendingSessionId: string; expiresIn: number }
-  | { type: 'AUTH_APPROVED'; token: string; agentId: string; encryptedSalt?: string }
+  | {
+      type: 'AUTH_APPROVED'
+      token: string
+      agentId: string
+      encryptedSalt?: string
+      localEndpoint?: string | { url: string; localToken?: string }
+    }
   | { type: 'SESSION_EXPIRED' }
   | { type: 'ERROR'; code: string; message: string }

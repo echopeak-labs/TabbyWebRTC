@@ -33,7 +33,7 @@ export class TurnController {
     const turnSecret = this.config.get<string>('TURN_SECRET');
     const turnUrls = this.config.get<string>('TURN_URLS');
     if (!turnSecret || !turnUrls) {
-      throw new HttpException({ error: 'TURN not configured' }, 500);
+      return { urls: [], username: '', credential: '', ttl: 0 };
     }
 
     const { username, credential, ttl } = generateTurnCredential(

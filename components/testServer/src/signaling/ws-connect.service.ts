@@ -52,9 +52,20 @@ export class WsConnectService {
         const payload = await verifyAgentJwt(agentToken);
         const agentId = payload.sub!;
         const agent = this.agents.getAgent(agentId);
-        if (!agent?.tokenJti || !payload.jti || agent.tokenJti !== payload.jti) {
+        if (agent?.tokenJti && payload.jti && agent.tokenJti !== payload.jti) {
           client.close(1008, 'Agent token revoked');
           return { connectionId, ok: false, statusCode: 401, message: 'Agent token revoked' };
+        }
+        if (!payload.jti) {
+          client.close(1008, 'Invalid agent token');
+          return { connectionId, ok: false, statusCode: 401, message: 'Invalid agent token' };
+        }
+        if (!agent) {
+          this.agents.restorePairedAgent({
+            agentId,
+            userId: payload.userId,
+            tokenJti: payload.jti,
+          });
         }
         this.connections.putConnection(connectionId, clientType, {
           agentId,
@@ -85,8 +96,11 @@ export class WsConnectService {
     const record = this.connections.getConnection(connectionId);
 
     if (record?.clientType === 'agent' && record.agentId) {
-      this.agents.markAgentOffline(record.agentId);
-      await this.agents.notifyAgentSubscribers(record.agentId, { type: 'AGENT_OFFLINE' });
+      const activeConnectionId = this.connections.findAgentConnectionId(record.agentId);
+      if (activeConnectionId === connectionId) {
+        this.agents.markAgentOffline(record.agentId);
+        await this.agents.notifyAgentSubscribers(record.agentId, { type: 'AGENT_OFFLINE' });
+      }
     }
 
     this.connections.deleteConnection(connectionId);

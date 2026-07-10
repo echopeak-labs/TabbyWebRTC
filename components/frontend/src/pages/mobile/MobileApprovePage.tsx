@@ -56,45 +56,34 @@ function encryptSalt(publicKey: string, salt: Uint8Array): string {
 }
 
 async function tryLocalEndpoint(agent: PairedAgent): Promise<{ url: string; localToken: string } | undefined> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 2000)
-    const response = await fetch(`http://127.0.0.1:7700/info`, {
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-    if (!response.ok) {
-      return undefined
+  const host = window.location.hostname
+  const pageLan =
+    host && host !== 'localhost' && host !== '127.0.0.1'
+      ? `http://${host}:7700`
+      : undefined
+  const candidates = [agent.localEndpoint, pageLan].filter(
+    (value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index,
+  )
+
+  for (const base of candidates) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 2000)
+      const response = await fetch(`${base.replace(/\/$/, '')}/info`, {
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (!response.ok) {
+        continue
+      }
+      const info = (await response.json()) as { agentId?: string; localToken?: string }
+      if (info.agentId === agent.agentId && info.localToken) {
+        return { url: base.replace(/\/$/, ''), localToken: info.localToken }
+      }
+    } catch {
     }
-    const info = (await response.json()) as { agentId?: string; localToken?: string }
-    if (info.agentId === agent.agentId && info.localToken) {
-      return { url: 'http://127.0.0.1:7700', localToken: info.localToken }
-    }
-  } catch {
-    return undefined
   }
   return undefined
-}
-
-async function confirmIdentity(getToken: () => Promise<string | null>): Promise<boolean> {
-  if (window.PublicKeyCredential) {
-    try {
-      const challenge = crypto.getRandomValues(new Uint8Array(32))
-      await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          timeout: 60000,
-          userVerification: 'required',
-          rpId: window.location.hostname,
-        },
-      })
-      return true
-    } catch {
-      // fall through to Clerk
-    }
-  }
-  const token = await getToken()
-  return token !== null
 }
 
 export function MobileApprovePage() {
@@ -126,10 +115,6 @@ export function MobileApprovePage() {
     setApproving(true)
     setError(null)
     try {
-      const verified = await confirmIdentity(getToken)
-      if (!verified) {
-        throw new Error('Identity verification failed')
-      }
       const clerkJwt = await getToken()
       if (!clerkJwt) {
         throw new Error('Not authenticated')
@@ -176,7 +161,9 @@ export function MobileApprovePage() {
           <Check className="h-8 w-8 text-green-500" />
         </div>
         <h1 className="mt-4 text-xl font-semibold text-textPrimary">Desktop connected</h1>
-        <p className="mt-2 text-textMuted">{selectedAgent.name}</p>
+        <p className="mt-2 text-center text-textMuted">
+          {selectedAgent.name} can stream to the browser that showed the QR.
+        </p>
       </div>
     )
   }
@@ -195,23 +182,35 @@ export function MobileApprovePage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-base font-medium text-textPrimary">Authorize Connection</h1>
+        <h1 className="text-base font-medium text-textPrimary">Approve session</h1>
       </header>
 
       <div className="flex flex-1 flex-col p-4">
-        <p className="mb-3 text-sm text-textMuted">Connecting to:</p>
+        <p className="mb-3 text-sm text-textMuted">Connect the scanned browser to:</p>
 
         {pairedAgents.length === 0 ? (
-          <p className="text-sm text-destructive">No paired agents. Pair a machine first.</p>
+          <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+            <p className="text-sm text-textPrimary">
+              This desktop QR is ready, but no machine is paired to your account yet.
+            </p>
+            <p className="text-sm text-textMuted">
+              One-time setup: on the PC, run the agent until it prints a PAIR QR, then pair it from
+              your phone. After that, scan this desktop QR again to approve.
+            </p>
+            <Button
+              className="min-h-11 w-full"
+              onClick={() => navigate('/scan?mode=pair')}
+            >
+              Pair a machine
+            </Button>
+          </div>
         ) : pairedAgents.length === 1 && selectedAgent ? (
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <Monitor className="h-6 w-6 text-primary" />
               <div>
                 <p className="font-medium text-textPrimary">{selectedAgent.name}</p>
-                <p className="text-sm text-textMuted">
-                  {platformLabel(selectedAgent.platform)} · Last seen now
-                </p>
+                <p className="text-sm text-textMuted">{platformLabel(selectedAgent.platform)}</p>
               </div>
             </div>
           </div>
@@ -239,9 +238,11 @@ export function MobileApprovePage() {
           </ul>
         )}
 
-        <p className="mt-6 text-sm text-textMuted">
-          This will grant access to your desktop from the scanned device.
-        </p>
+        {pairedAgents.length > 0 && (
+          <p className="mt-6 text-sm text-textMuted">
+            You’re already signed in. Approving links this browser tab to the selected machine.
+          </p>
+        )}
 
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
       </div>
@@ -252,7 +253,7 @@ export function MobileApprovePage() {
           disabled={approving || !selectedAgent}
           onClick={() => void handleApprove()}
         >
-          {approving ? 'Approving…' : 'Approve with Face ID'}
+          {approving ? 'Connecting…' : 'Approve'}
         </Button>
         <Button
           variant="ghost"

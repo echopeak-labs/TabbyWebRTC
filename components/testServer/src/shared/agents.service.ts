@@ -63,6 +63,31 @@ export class AgentsService {
     return updated;
   }
 
+  restorePairedAgent(input: {
+    agentId: string;
+    userId: string;
+    tokenJti: string;
+  }): AgentRecord {
+    const existing = this.store.get(input.agentId);
+    const now = Date.now();
+    const item: AgentRecord = {
+      agentId: input.agentId,
+      userId: input.userId,
+      name: existing?.name ?? input.agentId,
+      connectionId: existing?.connectionId ?? '',
+      publicKey: existing?.publicKey ?? '',
+      platform: existing?.platform ?? 'linux',
+      displays: existing?.displays ?? [],
+      apps: existing?.apps ?? [],
+      localEndpoint: existing?.localEndpoint,
+      online: false,
+      lastSeen: now,
+      tokenJti: input.tokenJti,
+    };
+    this.store.set(input.agentId, item);
+    return item;
+  }
+
   consumePairingClaim(agentId: string, nonce: string): string | undefined {
     const agent = this.store.get(agentId);
     if (!agent?.pairingToken || !agent.pairingNonce || !agent.pairingExpiresAt) {
@@ -100,8 +125,13 @@ export class AgentsService {
     agent: Omit<AgentRecord, 'online' | 'lastSeen' | 'TTL'>,
   ): void {
     const now = Date.now();
+    const existing = this.store.get(agent.agentId);
     const item: AgentRecord = {
+      ...existing,
       ...agent,
+      name: agent.name || existing?.name || agent.agentId,
+      userId: agent.userId || existing?.userId,
+      tokenJti: existing?.tokenJti,
       online: true,
       lastSeen: now,
       TTL: Math.floor(now / 1000) + AGENT_HEARTBEAT_TTL_SECONDS,

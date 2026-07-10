@@ -2,8 +2,10 @@ use std::mem::{size_of, zeroed};
 use std::process::Command as StdCommand;
 
 use arboard::Clipboard;
+use nix::ioctl_none;
 use nix::ioctl_write_int;
-use nix::libc::{self, c_int, input_event, input_id, uinput_setup, INPUT_PROP_DIRECT};
+use nix::ioctl_write_ptr;
+use nix::libc::{c_int, input_event, input_id, uinput_setup};
 use tracing::warn;
 
 use crate::keys::code_to_vk;
@@ -12,14 +14,11 @@ use crate::{AgentCommand, InputInjector, ModifierState, MouseButton};
 const EV_SYN: u16 = 0;
 const EV_KEY: u16 = 1;
 const EV_REL: u16 = 2;
-const EV_ABS: u16 = 3;
 const SYN_REPORT: u16 = 0;
 const REL_X: u16 = 0;
 const REL_Y: u16 = 1;
 const REL_WHEEL: u16 = 8;
 const REL_HWHEEL: u16 = 6;
-const ABS_X: u16 = 0;
-const ABS_Y: u16 = 1;
 const BTN_LEFT: u16 = 0x110;
 const BTN_RIGHT: u16 = 0x111;
 const BTN_MIDDLE: u16 = 0x112;
@@ -30,37 +29,19 @@ const KEY_LEFTMETA: u16 = 125;
 const KEY_DELETE: u16 = 111;
 const KEY_V: u16 = 47;
 
-const UI_DEV_SETUP: libc::c_ulong = 0xC0105503;
-const UI_ABS_SETUP: libc::c_ulong = 0xC010550B;
-const UI_SET_PROPBIT: libc::c_ulong = 0x4004556E;
-
 ioctl_write_int!(ui_set_evbit, b'U', 100);
 ioctl_write_int!(ui_set_keybit, b'U', 101);
 ioctl_write_int!(ui_set_relbit, b'U', 102);
-ioctl_write_int!(ui_set_absbit, b'U', 103);
-ioctl_write_int!(ui_dev_create, b'U', 1);
-
-#[repr(C)]
-struct UinputAbsSetup {
-    code: u16,
-    absinfo: InputAbsInfo,
-}
-
-#[repr(C)]
-struct InputAbsInfo {
-    value: i32,
-    minimum: i32,
-    maximum: i32,
-    fuzz: i32,
-    flat: i32,
-    resolution: i32,
-}
+ioctl_none!(ui_dev_create, b'U', 1);
+ioctl_write_ptr!(ui_dev_setup, b'U', 3, uinput_setup);
 
 pub struct LinuxInjector {
     keyboard: UInputDevice,
     mouse: UInputDevice,
     screen_width: i32,
     screen_height: i32,
+    last_x: i32,
+    last_y: i32,
 }
 
 struct UInputDevice {
@@ -92,10 +73,9 @@ impl UInputDevice {
             version: 1,
         };
         unsafe {
-            if libc::ioctl(fd, UI_DEV_SETUP, &usetup as *const uinput_setup) == -1 {
-                return Err(anyhow::anyhow!("UI_DEV_SETUP failed"));
-            }
-            ui_dev_create(fd, 0u64)?;
+            ui_dev_setup(fd, &usetup)
+                .map_err(|err| anyhow::anyhow!("UI_DEV_SETUP failed: {err}"))?;
+            ui_dev_create(fd).map_err(|err| anyhow::anyhow!("UI_DEV_CREATE failed: {err}"))?;
         }
         std::thread::sleep(std::time::Duration::from_millis(50));
         Ok(Self { file })
@@ -135,11 +115,10 @@ fn setup_keyboard(fd: c_int) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn setup_mouse(fd: c_int, width: i32, height: i32) -> anyhow::Result<()> {
+fn setup_mouse(fd: c_int) -> anyhow::Result<()> {
     unsafe {
         ui_set_evbit(fd, EV_KEY as u64)?;
         ui_set_evbit(fd, EV_REL as u64)?;
-        ui_set_evbit(fd, EV_ABS as u64)?;
         ui_set_keybit(fd, BTN_LEFT as u64)?;
         ui_set_keybit(fd, BTN_RIGHT as u64)?;
         ui_set_keybit(fd, BTN_MIDDLE as u64)?;
@@ -147,31 +126,6 @@ fn setup_mouse(fd: c_int, width: i32, height: i32) -> anyhow::Result<()> {
         ui_set_relbit(fd, REL_Y as u64)?;
         ui_set_relbit(fd, REL_WHEEL as u64)?;
         ui_set_relbit(fd, REL_HWHEEL as u64)?;
-        ui_set_absbit(fd, ABS_X as u64)?;
-        ui_set_absbit(fd, ABS_Y as u64)?;
-        for code in [ABS_X, ABS_Y] {
-            let max = if code == ABS_X {
-                width.saturating_sub(1)
-            } else {
-                height.saturating_sub(1)
-            };
-            let setup = UinputAbsSetup {
-                code,
-                absinfo: InputAbsInfo {
-                    value: 0,
-                    minimum: 0,
-                    maximum: max,
-                    fuzz: 0,
-                    flat: 0,
-                    resolution: 0,
-                },
-            };
-            if libc::ioctl(fd, UI_ABS_SETUP, &setup as *const UinputAbsSetup) == -1 {
-                return Err(anyhow::anyhow!("UI_ABS_SETUP failed for code {code}"));
-            }
-        }
-        let prop = INPUT_PROP_DIRECT as c_int;
-        let _ = libc::ioctl(fd, UI_SET_PROPBIT, &prop as *const c_int);
     }
     Ok(())
 }
@@ -190,14 +144,14 @@ impl LinuxInjector {
     pub fn new() -> anyhow::Result<Self> {
         let (screen_width, screen_height) = screen_size();
         let keyboard = UInputDevice::open("tabbywebrtc-keyboard", setup_keyboard)?;
-        let mouse = UInputDevice::open("tabbywebrtc-mouse", |fd| {
-            setup_mouse(fd, screen_width, screen_height)
-        })?;
+        let mouse = UInputDevice::open("tabbywebrtc-mouse", setup_mouse)?;
         Ok(Self {
             keyboard,
             mouse,
             screen_width,
             screen_height,
+            last_x: screen_width / 2,
+            last_y: screen_height / 2,
         })
     }
 
@@ -273,8 +227,19 @@ impl InputInjector for LinuxInjector {
     fn mouse_move_abs(&mut self, x: i32, y: i32) -> anyhow::Result<()> {
         let x = x.clamp(0, self.screen_width.saturating_sub(1));
         let y = y.clamp(0, self.screen_height.saturating_sub(1));
-        self.mouse.emit(EV_ABS, ABS_X, x)?;
-        self.mouse.emit(EV_ABS, ABS_Y, y)?;
+        let dx = x - self.last_x;
+        let dy = y - self.last_y;
+        if dx == 0 && dy == 0 {
+            return Ok(());
+        }
+        if dx != 0 {
+            self.mouse.emit(EV_REL, REL_X, dx)?;
+        }
+        if dy != 0 {
+            self.mouse.emit(EV_REL, REL_Y, dy)?;
+        }
+        self.last_x = x;
+        self.last_y = y;
         self.mouse.sync()
     }
 
@@ -285,6 +250,8 @@ impl InputInjector for LinuxInjector {
         if dy != 0 {
             self.mouse.emit(EV_REL, REL_Y, dy)?;
         }
+        self.last_x = (self.last_x + dx).clamp(0, self.screen_width.saturating_sub(1));
+        self.last_y = (self.last_y + dy).clamp(0, self.screen_height.saturating_sub(1));
         self.mouse.sync()
     }
 

@@ -15,6 +15,29 @@ use crate::messages::{partition_sources, InboundMessage, OutboundMessage};
 
 const BACKOFF_SECONDS: [u64; 5] = [2, 4, 8, 16, 60];
 
+fn agent_signaling_url(base: &str, jwt: &str) -> String {
+    let trimmed = base.trim().trim_end_matches('/');
+    let with_path = match trimmed.split_once("://") {
+        Some((scheme, rest)) if !rest.contains('/') => format!("{scheme}://{rest}/"),
+        _ => format!("{trimmed}/"),
+    };
+    let mut url = with_path;
+    let sep = if url.contains('?') { "&" } else { "?" };
+    url.push_str(sep);
+    url.push_str("clientType=agent&token=");
+    for byte in jwt.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                url.push(byte as char);
+            }
+            _ => {
+                url.push_str(&format!("%{byte:02X}"));
+            }
+        }
+    }
+    url
+}
+
 #[derive(Debug, Clone)]
 pub struct AgentRegistration {
     pub agent_id: String,
@@ -80,7 +103,13 @@ impl SignalingClient {
                 if let Some(sink) = guard.as_mut() {
                     if let Err(err) = sink.send(Message::Text(msg)).await {
                         error!(%err, "signaling send failed");
+                        continue;
                     }
+                    if let Err(err) = sink.flush().await {
+                        error!(%err, "signaling flush failed");
+                    }
+                } else {
+                    warn!("dropping outbound signaling message; websocket not connected");
                 }
             }
         });
@@ -111,7 +140,7 @@ impl SignalingClient {
                     warn!("signaling websocket closed, reconnecting");
                 }
                 Err(err) => {
-                    error!(%err, "signaling connection error");
+                    error!(error = %format!("{err:#}"), "signaling connection error");
                 }
             }
 
@@ -133,25 +162,22 @@ impl SignalingClient {
         ws_write: &Arc<Mutex<Option<WsWrite>>>,
         inbound_tx: &mpsc::Sender<InboundMessage>,
     ) -> anyhow::Result<()> {
-        let mut request = url.into_client_request()?;
+        let connect_url = agent_signaling_url(url, jwt);
+        let mut request = connect_url.as_str().into_client_request()?;
         request
             .headers_mut()
             .insert("Authorization", format!("Bearer {jwt}").parse()?);
 
-        let (ws_stream, _) = connect_async(request)
+        let (mut ws_stream, _) = connect_async(request)
             .await
-            .with_context(|| format!("failed to connect to signaling server at {url}"))?;
+            .with_context(|| format!("failed to connect to signaling server at {connect_url}"))?;
 
-        info!(url, "signaling connected");
-
-        let (write, mut read) = ws_stream.split();
-        {
-            let mut guard = ws_write.lock().await;
-            *guard = Some(write);
-        }
+        info!(url = %connect_url, "signaling connected");
 
         let sources = registration.sources.read().await.clone();
         let (displays, apps) = partition_sources(&sources);
+        let display_count = displays.len();
+        let app_count = apps.len();
         let register = OutboundMessage::AgentRegister {
             agent_id: registration.agent_id.clone(),
             public_key: registration.public_key.clone(),
@@ -160,7 +186,31 @@ impl SignalingClient {
             apps,
             local_endpoint: registration.local_endpoint.clone(),
         };
-        Self::send_raw(ws_write, &serde_json::to_string(&register)?).await?;
+        let register_payload = serde_json::to_string(&register)?;
+        ws_stream
+            .send(Message::Text(register_payload.clone()))
+            .await
+            .context("failed to send AGENT_REGISTER")?;
+        ws_stream.flush().await.context("failed to flush AGENT_REGISTER")?;
+        info!(
+            displays = display_count,
+            apps = app_count,
+            "AGENT_REGISTER sent"
+        );
+
+        let (write, mut read) = ws_stream.split();
+        {
+            let mut guard = ws_write.lock().await;
+            *guard = Some(write);
+        }
+
+        let ws_write_for_retry = ws_write.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(250)).await;
+            if let Err(err) = Self::send_raw(&ws_write_for_retry, &register_payload).await {
+                warn!(%err, "AGENT_REGISTER retry failed");
+            }
+        });
 
         while let Some(result) = read.next().await {
             match result {
@@ -198,6 +248,7 @@ impl SignalingClient {
             .as_mut()
             .context("signaling websocket not connected")?;
         sink.send(Message::Text(payload.to_string())).await?;
+        sink.flush().await?;
         Ok(())
     }
 

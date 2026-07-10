@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-fetch'
+import { randomUUID } from '@/lib/utils'
 
 const STUN_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -28,19 +29,34 @@ export async function fetchTurnCredentials(token: string): Promise<TurnCredentia
     return cachedTurnCredentials
   }
 
+  const empty: TurnCredentials = { urls: [], username: '', credential: '', ttl: 0 }
   const restUrl = import.meta.env.VITE_REST_URL
-  const response = await apiFetch(`${restUrl}/turn-credentials`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch TURN credentials: ${response.status}`)
+  if (!restUrl) {
+    return empty
   }
 
-  const data = (await response.json()) as TurnCredentials
-  cachedTurnCredentials = data
-  cachedTurnToken = token
-  return data
+  try {
+    const response = await apiFetch(`${restUrl}/turn-credentials`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      return empty
+    }
+
+    const data = (await response.json()) as TurnCredentials
+    const normalized: TurnCredentials = {
+      urls: (data.urls ?? []).map((url) => url.trim()).filter(Boolean),
+      username: data.username ?? '',
+      credential: data.credential ?? '',
+      ttl: data.ttl ?? 0,
+    }
+    cachedTurnCredentials = normalized
+    cachedTurnToken = token
+    return normalized
+  } catch {
+    return empty
+  }
 }
 
 export function clearTurnCredentialsCache(): void {
@@ -50,15 +66,16 @@ export function clearTurnCredentialsCache(): void {
 
 export async function createPeerConnection(token: string): Promise<RTCPeerConnection> {
   const turn = await fetchTurnCredentials(token)
+  const turnUrls = (turn.urls ?? []).map((url) => url.trim()).filter(Boolean)
 
-  const iceServers: RTCIceServer[] = [
-    ...STUN_SERVERS,
-    {
-      urls: turn.urls,
+  const iceServers: RTCIceServer[] = [...STUN_SERVERS]
+  if (turnUrls.length > 0) {
+    iceServers.push({
+      urls: turnUrls,
       username: turn.username,
       credential: turn.credential,
-    },
-  ]
+    })
+  }
 
   const config: RTCConfiguration = {
     iceServers,
@@ -84,7 +101,7 @@ const TAB_ID_KEY = 'tabbywebrtc_tab_id'
 export function getTabId(): string {
   let id = sessionStorage.getItem(TAB_ID_KEY)
   if (!id) {
-    id = crypto.randomUUID()
+    id = randomUUID()
     sessionStorage.setItem(TAB_ID_KEY, id)
   }
   return id

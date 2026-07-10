@@ -103,12 +103,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev pkg-config
-      - run: cargo build --release --features scap-capture,software-encode --target ${{ matrix.target }}
+      - run: cargo build --release -p tabbywebrtc-agent --features scap-capture,software-encode --target ${{ matrix.target }}
       - name: Assert release capture feature
         shell: bash
         run: |
-          grep -q 'scap-capture' agent/Cargo.toml
-          grep -q 'scap-capture' capture/Cargo.toml
+          grep -q 'scap-capture = \["capture/scap-capture"\]' agent/Cargo.toml
+          grep -q 'scap-capture = \["scap"\]' capture/Cargo.toml
           echo "hardware-encode deferred for release matrix; software-encode enabled"
       - name: Rename binary
         shell: bash

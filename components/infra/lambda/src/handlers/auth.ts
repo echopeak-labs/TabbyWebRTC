@@ -35,6 +35,7 @@ export async function handleAuthApprove(
   pendingSessionId: string,
   agentId: string,
   encryptedSalt?: string,
+  localEndpoint?: { url: string; localToken: string },
 ): Promise<APIGatewayProxyResult> {
   const { userId } = await verifyClerkJwt(clerkToken);
   const session = await getPendingSession(pendingSessionId);
@@ -60,11 +61,26 @@ export async function handleAuthApprove(
     ...(encryptedSalt ? { encryptedSalt } : {}),
   });
 
+  const resolvedLocal =
+    localEndpoint?.url && localEndpoint.localToken
+      ? localEndpoint
+      : agent.localEndpoint
+        ? { url: agent.localEndpoint, localToken: '' }
+        : undefined;
+
   await sendToConnection(session.connectionId, {
     type: 'AUTH_APPROVED',
     token,
     agentId,
     ...(encryptedSalt ? { encryptedSalt } : {}),
+    ...(resolvedLocal?.url
+      ? {
+          localEndpoint: {
+            url: resolvedLocal.url,
+            ...(resolvedLocal.localToken ? { localToken: resolvedLocal.localToken } : {}),
+          },
+        }
+      : {}),
   });
 
   return jsonResponse(200, { ok: true });
@@ -129,12 +145,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return jsonResponse(401, { error: 'Missing authorization' });
   }
 
-  let body: { pendingSessionId?: string; agentId?: string; encryptedSalt?: string };
+  let body: {
+    pendingSessionId?: string;
+    agentId?: string;
+    encryptedSalt?: string;
+    localEndpoint?: { url: string; localToken: string };
+  };
   try {
     body = JSON.parse(event.body ?? '{}') as {
       pendingSessionId?: string;
       agentId?: string;
       encryptedSalt?: string;
+      localEndpoint?: { url: string; localToken: string };
     };
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON body' });
@@ -150,6 +172,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       body.pendingSessionId,
       body.agentId,
       body.encryptedSalt,
+      body.localEndpoint,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Authorization failed';

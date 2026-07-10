@@ -158,7 +158,8 @@ fn build_software_encoder(params: &EncoderParams) -> anyhow::Result<Encoder> {
     let config = EncoderConfig::new()
         .set_bitrate_bps(bitrate_bps)
         .max_frame_rate(params.fps as f32)
-        .rate_control_mode(RateControlMode::Bitrate);
+        .rate_control_mode(RateControlMode::Bitrate)
+        .usage_type(openh264::encoder::UsageType::ScreenContentRealTime);
     let _ = (params.profile, params.level, params.rate_control);
     Encoder::with_api_config(OpenH264API::from_source(), config)
         .map_err(|e| anyhow::anyhow!("openh264 init failed: {e}"))

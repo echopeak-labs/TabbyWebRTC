@@ -14,6 +14,8 @@
       Platform="x64" />
     <MajorUpgrade DowngradeErrorMessage="A newer version of TabbyWebRTC Agent is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <Icon Id="AppIcon" SourceFile="$(var.AgentIcon)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
     <Feature Id="ProductFeature" Title="TabbyWebRTC Agent" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
     </Feature>

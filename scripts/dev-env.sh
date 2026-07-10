@@ -26,14 +26,17 @@ detect_lan_ip() {
   fi
 
   if [[ -z "$ip" ]]; then
-    echo "Could not detect LAN IP. Set LAN_IP and retry." >&2
-    exit 1
+    echo "Could not detect LAN IP; falling back to 127.0.0.1. Set LAN_IP to override." >&2
+    ip="127.0.0.1"
   fi
 
   echo "$ip"
 }
 
-export LAN_IP="$(detect_lan_ip)"
+if ! LAN_IP="$(detect_lan_ip)"; then
+  exit 1
+fi
+export LAN_IP
 export TEST_SERVER_PORT="${TEST_SERVER_PORT:-3001}"
 export FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 export HOST="0.0.0.0"

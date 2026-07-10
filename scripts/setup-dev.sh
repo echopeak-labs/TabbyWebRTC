@@ -30,8 +30,18 @@ echo "Installing workspace dependencies..."
 cd "$ROOT"
 yarn install --frozen-lockfile 2>/dev/null || yarn install
 
+# shellcheck source=agent-features.sh
+source "$ROOT/scripts/agent-features.sh"
+
 echo "Building desktop agent (debug)..."
-cargo build --manifest-path "$ROOT/components/desktop-agent/Cargo.toml"
+FEATURES="$(agent_cargo_features)"
+if [[ -n "$FEATURES" ]]; then
+  cargo build --manifest-path "$ROOT/components/desktop-agent/Cargo.toml" -p tabbywebrtc-agent --features "$FEATURES"
+else
+  echo "libpipewire-0.3 not found; building without scap-capture (synthetic frames)."
+  echo "Install: sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev pkg-config"
+  cargo build --manifest-path "$ROOT/components/desktop-agent/Cargo.toml" -p tabbywebrtc-agent
+fi
 
 echo "Copying env templates..."
 cp "$ROOT/components/frontend/.env.example" "$ROOT/components/frontend/.env.local"

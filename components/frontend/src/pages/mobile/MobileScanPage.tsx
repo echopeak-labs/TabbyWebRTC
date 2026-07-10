@@ -1,9 +1,11 @@
-import { BrowserMultiFormatReader } from '@zxing/browser'
+import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
+import { DecodeHintType } from '@zxing/library'
 import { ArrowLeft } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { addPairedAgent } from '@/lib/clerk-client'
+import { randomUUID } from '@/lib/utils'
 import { useMobileStore } from '@/stores/mobileStore'
 import {
   isPairQRPayload,
@@ -14,6 +16,51 @@ import {
 import { useAuth, useUser } from '@clerk/clerk-react'
 
 const REST_URL = import.meta.env.VITE_REST_URL
+
+type BarcodeDetectorLike = {
+  detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>
+}
+
+type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorLike
+
+function getBarcodeDetector(): BarcodeDetectorCtor | null {
+  const ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector
+  return ctor ?? null
+}
+
+function createQrReader() {
+  const hints = new Map<DecodeHintType, unknown>()
+  hints.set(DecodeHintType.TRY_HARDER, true)
+  return new BrowserQRCodeReader(hints, {
+    delayBetweenScanAttempts: 150,
+    delayBetweenScanSuccess: 300,
+  })
+}
+
+function waitForVideo(video: HTMLVideoElement): Promise<void> {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+    return Promise.resolve()
+  }
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      cleanup()
+      reject(new Error('Camera video timed out'))
+    }, 8000)
+    const onReady = () => {
+      if (video.videoWidth > 0) {
+        cleanup()
+        resolve()
+      }
+    }
+    const cleanup = () => {
+      window.clearTimeout(timeout)
+      video.removeEventListener('loadeddata', onReady)
+      video.removeEventListener('playing', onReady)
+    }
+    video.addEventListener('loadeddata', onReady)
+    video.addEventListener('playing', onReady)
+  })
+}
 
 function parseQRPayload(raw: string): QRPayload | null {
   try {
@@ -71,14 +118,36 @@ async function deliverAgentJwt(
   return false
 }
 
+async function waitForAgentOnline(endpoints: string[], timeoutMs = 10000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    for (const base of endpoints) {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 1500)
+        const response = await fetch(`${base.replace(/\/$/, '')}/info`, {
+          signal: controller.signal,
+        })
+        clearTimeout(timeout)
+        if (response.ok) {
+          return true
+        }
+      } catch {
+      }
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
+  }
+  return false
+}
+
 export function MobileScanPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const pairMode = searchParams.get('mode') === 'pair'
   const videoRef = useRef<HTMLVideoElement>(null)
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null)
+  const controlsRef = useRef<IScannerControls | null>(null)
+  const scanTimerRef = useRef<number | null>(null)
   const scanningRef = useRef(false)
-  const rafRef = useRef<number | null>(null)
 
   const { getToken } = useAuth()
   const { user } = useUser()
@@ -89,19 +158,25 @@ export function MobileScanPage() {
   const [error, setError] = useState<string | null>(null)
   const [pairing, setPairing] = useState(false)
   const [pairPayload, setPairPayload] = useState<PairQRPayload | null>(null)
+  const [cameraActive, setCameraActive] = useState(false)
+  const [lastScan, setLastScan] = useState<string | null>(null)
+  const [manualPayload, setManualPayload] = useState('')
+  const insecureContext = typeof window !== 'undefined' && !window.isSecureContext
 
   const stopScanner = useCallback(() => {
     scanningRef.current = false
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
+    if (scanTimerRef.current !== null) {
+      window.clearTimeout(scanTimerRef.current)
+      scanTimerRef.current = null
     }
-    readerRef.current = null
+    controlsRef.current?.stop()
+    controlsRef.current = null
     const stream = videoRef.current?.srcObject as MediaStream | null
     stream?.getTracks().forEach((track) => track.stop())
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
+    setCameraActive(false)
   }, [])
 
   const handlePair = useCallback(
@@ -118,7 +193,7 @@ export function MobileScanPage() {
         }
         const name = payload.name ?? `Machine ${payload.agentId.slice(0, 8)}`
         const platform = payload.platform ?? 'linux'
-        const pairingNonce = payload.pairingNonce ?? crypto.randomUUID()
+        const pairingNonce = payload.pairingNonce ?? randomUUID()
         const response = await fetch(`${REST_URL}/agents/pair`, {
           method: 'POST',
           headers: {
@@ -148,7 +223,7 @@ export function MobileScanPage() {
           'http://localhost:7700',
         ].filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index)
 
-        await deliverAgentJwt(pairBody.agentJwt, pairingNonce, endpoints)
+        const delivered = await deliverAgentJwt(pairBody.agentJwt, pairingNonce, endpoints)
 
         const agent = {
           agentId: payload.agentId,
@@ -156,11 +231,15 @@ export function MobileScanPage() {
           platform,
           publicKey: payload.publicKey,
           lastSeen: new Date().toISOString(),
+          localEndpoint: payload.localEndpoint,
         }
         const updated = await addPairedAgent(user, agent)
         setPairedAgents(updated)
         addAgent(agent)
         stopScanner()
+        if (!delivered) {
+          await waitForAgentOnline(endpoints)
+        }
         navigate('/agents', { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Pairing failed')
@@ -173,9 +252,24 @@ export function MobileScanPage() {
 
   const handleDecode = useCallback(
     (raw: string) => {
-      const payload = parseQRPayload(raw)
+      const text = raw.trim()
+      setLastScan(text)
+      setError(null)
+
+      try {
+        const data = JSON.parse(text) as Record<string, unknown>
+        if (typeof data.part === 'number' && typeof data.of === 'number' && typeof data.data === 'string') {
+          stopScanner()
+          setError(null)
+          setLastScan(`Captured part ${data.part}/${data.of} (${data.data.length} chars)`)
+          return
+        }
+      } catch {
+      }
+
+      const payload = parseQRPayload(text)
       if (!payload) {
-        setError('Invalid QR code format')
+        setError(`Detected QR, but not a TabbyWebRTC payload: ${text.slice(0, 120)}`)
         return
       }
 
@@ -193,59 +287,157 @@ export function MobileScanPage() {
         return
       }
 
-      setError('Unsupported QR code')
+      setError(`Detected QR, unsupported shape: ${text.slice(0, 120)}`)
     },
     [handlePair, navigate, setPendingScanPayload, stopScanner],
   )
 
   useEffect(() => {
-    let cancelled = false
-    const reader = new BrowserMultiFormatReader()
-    readerRef.current = reader
+    return () => {
+      stopScanner()
+    }
+  }, [stopScanner])
+
+  const startCamera = useCallback(async () => {
+    setError(null)
+    setLastScan(null)
+
+    if (!window.isSecureContext) {
+      setError(
+        `Camera needs HTTPS or localhost. This page is ${window.location.origin}, which browsers treat as insecure. Paste the QR JSON below, or open via HTTPS / Chrome flag unsafely-treat-insecure-origin-as-secure.`,
+      )
+      return
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('This browser does not support camera access. Paste the QR JSON below.')
+      return
+    }
+
+    stopScanner()
     scanningRef.current = true
 
-    const start = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-        })
-        if (cancelled || !videoRef.current) {
-          stream.getTracks().forEach((track) => track.stop())
-          return
-        }
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
+    const constraintsList: MediaStreamConstraints[] = [
+      {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      },
+      { video: { facingMode: { ideal: 'environment' } } },
+      { video: true },
+    ]
 
-        const scanLoop = async () => {
+    let stream: MediaStream | null = null
+    let lastError: unknown
+    for (const constraints of constraintsList) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+        break
+      } catch (err) {
+        lastError = err
+      }
+    }
+
+    const video = videoRef.current
+    if (!stream || !video) {
+      const name = lastError instanceof DOMException ? lastError.name : ''
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setError('Camera permission was denied for this site. Check Opera site permissions.')
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setError('No camera was found on this device.')
+      } else {
+        setError('Could not open the camera. Paste the QR JSON below.')
+      }
+      scanningRef.current = false
+      stream?.getTracks().forEach((track) => track.stop())
+      return
+    }
+
+    video.srcObject = stream
+    video.setAttribute('playsinline', 'true')
+    video.muted = true
+    try {
+      await video.play()
+      await waitForVideo(video)
+    } catch {
+      stream.getTracks().forEach((track) => track.stop())
+      scanningRef.current = false
+      setError('Camera started but video never became ready. Paste the QR JSON below.')
+      return
+    }
+
+    setCameraActive(true)
+
+    const onText = (text: string) => {
+      if (!scanningRef.current || !text) {
+        return
+      }
+      scanningRef.current = false
+      if (scanTimerRef.current !== null) {
+        window.clearTimeout(scanTimerRef.current)
+        scanTimerRef.current = null
+      }
+      controlsRef.current?.stop()
+      handleDecode(text)
+    }
+
+    const Detector = getBarcodeDetector()
+    if (Detector) {
+      try {
+        const detector = new Detector({ formats: ['qr_code'] })
+        const tick = async () => {
           if (!scanningRef.current || !videoRef.current) {
             return
           }
           try {
-            const result = await reader.decodeOnceFromVideoElement(videoRef.current)
-            if (result?.getText()) {
-              handleDecode(result.getText())
+            const codes = await detector.detect(videoRef.current)
+            const value = codes.find((code) => code.rawValue)?.rawValue
+            if (value) {
+              onText(value)
               return
             }
           } catch {
-            // no QR in frame
           }
-          rafRef.current = requestAnimationFrame(() => {
-            void scanLoop()
-          })
+          scanTimerRef.current = window.setTimeout(() => {
+            void tick()
+          }, 200)
         }
-        void scanLoop()
+        void tick()
+        controlsRef.current = {
+          stop: () => {
+            if (scanTimerRef.current !== null) {
+              window.clearTimeout(scanTimerRef.current)
+              scanTimerRef.current = null
+            }
+          },
+        }
+        return
       } catch {
-        if (!cancelled) {
-          setError('Camera permission is required to scan QR codes')
-        }
       }
     }
 
-    void start()
-
-    return () => {
-      cancelled = true
-      stopScanner()
+    try {
+      const reader = createQrReader()
+      const controls = await reader.decodeFromStream(stream, video, (result, err) => {
+        if (!scanningRef.current) {
+          return
+        }
+        if (result) {
+          onText(result.getText())
+          return
+        }
+        if (err && import.meta.env.DEV) {
+          console.debug('zxing scan miss', err.name)
+        }
+      })
+      controlsRef.current = controls
+    } catch {
+      stream.getTracks().forEach((track) => track.stop())
+      scanningRef.current = false
+      setCameraActive(false)
+      setError('Could not start QR scanner. Paste the QR JSON below.')
     }
   }, [handleDecode, stopScanner])
 
@@ -266,26 +458,75 @@ export function MobileScanPage() {
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
-        <div className="relative w-full max-w-sm overflow-hidden rounded-lg border border-border">
-          <video ref={videoRef} className="aspect-[4/3] w-full object-cover" playsInline muted />
+        <div className="relative w-full max-w-sm overflow-hidden rounded-lg border border-border bg-muted">
+          <video
+            ref={videoRef}
+            className="aspect-[4/3] w-full object-contain"
+            playsInline
+            muted
+            autoPlay
+          />
           <div className="pointer-events-none absolute inset-6 border-2 border-primary" />
           <div className="pointer-events-none absolute left-6 top-6 h-6 w-6 border-l-4 border-t-4 border-primary" />
           <div className="pointer-events-none absolute right-6 top-6 h-6 w-6 border-r-4 border-t-4 border-primary" />
           <div className="pointer-events-none absolute bottom-6 left-6 h-6 w-6 border-b-4 border-l-4 border-primary" />
           <div className="pointer-events-none absolute bottom-6 right-6 h-6 w-6 border-b-4 border-r-4 border-primary" />
+          {!cameraActive && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 p-4">
+              <Button className="min-h-11" onClick={() => void startCamera()}>
+                Enable camera
+              </Button>
+            </div>
+          )}
         </div>
 
         <p className="text-center text-sm text-textMuted">
           {pairMode
-            ? 'Point your camera at the setup QR on your desktop'
-            : 'Point your camera at the QR on your desktop screen'}
+            ? 'First-time setup: scan the agent PAIR QR from the desktop-agent terminal'
+            : 'Scan the QR on the desktop browser to approve this session'}
         </p>
+
+        {cameraActive && !lastScan && (
+          <p className="text-sm text-primary">Scanning… point at any QR to verify detection</p>
+        )}
+
+        {lastScan && (
+          <p className="max-w-sm break-all text-center text-sm text-primary">Last scan: {lastScan}</p>
+        )}
+
+        {insecureContext && (
+          <p className="max-w-sm text-center text-sm text-amber-500">
+            Opened over HTTP on a LAN IP — browsers block the camera here even if Opera has camera
+            permission. Use paste below for local testing.
+          </p>
+        )}
 
         {pairing && pairPayload && (
           <p className="text-sm text-primary">Pairing {pairPayload.name ?? 'machine'}…</p>
         )}
 
-        {error && <p className="text-center text-sm text-destructive">{error}</p>}
+        {error && <p className="max-w-sm text-center text-sm text-destructive">{error}</p>}
+
+        <div className="flex w-full max-w-sm flex-col gap-2">
+          <label className="text-sm text-textMuted" htmlFor="manual-qr">
+            Or paste QR JSON
+          </label>
+          <textarea
+            id="manual-qr"
+            className="min-h-24 w-full rounded-md border border-border bg-card p-3 text-sm text-textPrimary"
+            value={manualPayload}
+            onChange={(event) => setManualPayload(event.target.value)}
+            placeholder='{"pendingSessionId":"...","signalingUrl":"...","version":1}'
+          />
+          <Button
+            variant="secondary"
+            className="min-h-11"
+            disabled={pairing || !manualPayload.trim()}
+            onClick={() => handleDecode(manualPayload.trim())}
+          >
+            Use pasted code
+          </Button>
+        </div>
       </div>
     </div>
   )

@@ -139,8 +139,13 @@ export async function upsertAgentRegistration(
   agent: Omit<AgentRecord, 'online' | 'lastSeen' | 'TTL'>,
 ): Promise<void> {
   const now = Date.now();
+  const existing = await getAgent(agent.agentId);
   const item: AgentRecord = {
+    ...existing,
     ...agent,
+    name: agent.name || existing?.name || agent.agentId,
+    userId: agent.userId || existing?.userId,
+    tokenJti: existing?.tokenJti,
     online: true,
     lastSeen: now,
     TTL: Math.floor(now / 1000) + AGENT_HEARTBEAT_TTL_SECONDS,

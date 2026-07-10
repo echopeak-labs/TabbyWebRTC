@@ -9,7 +9,8 @@ Start Vite dev server (port 5173) pointed at local backend.
 
 Prerequisites:
   Node.js 22+
-  CLERK_PUBLISHABLE_KEY environment variable
+  VITE_* values in components/frontend/.env
+  (optional CLERK_PUBLISHABLE_KEY in the environment)
 
 EOF
 }
@@ -22,7 +23,11 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$ROOT/components/frontend"
-VITE_WS_URL="ws://localhost:3001" \
-VITE_REST_URL="http://localhost:3001" \
-VITE_CLERK_PUBLISHABLE_KEY="${CLERK_PUBLISHABLE_KEY:-}" \
+
+if [[ -n "${CLERK_PUBLISHABLE_KEY:-}" ]]; then
+  export VITE_CLERK_PUBLISHABLE_KEY="$CLERK_PUBLISHABLE_KEY"
+elif [[ -z "${VITE_CLERK_PUBLISHABLE_KEY:-}" ]]; then
+  unset VITE_CLERK_PUBLISHABLE_KEY
+fi
+
 yarn vite --port 5173

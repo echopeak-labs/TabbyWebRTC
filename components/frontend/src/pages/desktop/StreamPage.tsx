@@ -83,11 +83,33 @@ export function StreamPage() {
   }, [mouseMode, setMode])
 
   useEffect(() => {
-    if (mediaStream && videoRef.current) {
-      videoRef.current.srcObject = mediaStream
+    const video = videoRef.current
+    if (!mediaStream || !video) return
+
+    video.srcObject = mediaStream
+    video.muted = true
+    video.playsInline = true
+
+    const tryPlay = () => {
+      void video.play().catch(() => {
+        setError('Click the video to start playback')
+      })
+    }
+
+    tryPlay()
+    video.addEventListener('loadedmetadata', tryPlay)
+    return () => {
+      video.removeEventListener('loadedmetadata', tryPlay)
     }
   }, [mediaStream])
 
+  const handleVideoClick = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    void video.play().then(() => setError(null)).catch(() => {
+      setError('Click the video to start playback')
+    })
+  }, [])
   useEffect(() => {
     showControlBar()
     return () => {
@@ -141,7 +163,9 @@ export function StreamPage() {
         <video
           ref={videoRef}
           autoPlay
+          muted
           playsInline
+          onClick={handleVideoClick}
           data-source-id={sourceId}
           data-native-width={sourceMeta.width}
           data-native-height={sourceMeta.height}

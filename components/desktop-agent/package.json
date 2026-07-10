@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "bash ../../scripts/dev-agent-local.sh",
-    "build": "cargo build --release",
+    "build": "bash ../../scripts/build-agent-local.sh",
     "test": "cargo test"
   }
 }

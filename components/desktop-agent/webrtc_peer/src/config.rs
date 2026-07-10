@@ -22,7 +22,7 @@ pub fn build_webrtc_api() -> anyhow::Result<webrtc::api::API> {
                 mime_type: MIME_TYPE_H264.to_owned(),
                 clock_rate: 90000,
                 sdp_fmtp_line:
-                    "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f"
+                    "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
                         .to_owned(),
                 ..Default::default()
             },
@@ -66,7 +66,7 @@ pub fn h264_track_codec() -> RTCRtpCodecCapability {
     RTCRtpCodecCapability {
         mime_type: MIME_TYPE_H264.to_owned(),
         clock_rate: 90000,
-        sdp_fmtp_line: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f"
+        sdp_fmtp_line: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
             .to_owned(),
         ..Default::default()
     }

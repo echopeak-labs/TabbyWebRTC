@@ -3,7 +3,13 @@ import { readSession } from '@/lib/auth-sync'
 
 export type AuthInboundMessage =
   | { type: 'SESSION_PENDING'; pendingSessionId: string; expiresIn: number }
-  | { type: 'AUTH_APPROVED'; token: string; agentId: string }
+  | {
+      type: 'AUTH_APPROVED'
+      token: string
+      agentId: string
+      encryptedSalt?: string
+      localEndpoint?: string | { url: string; localToken?: string }
+    }
   | { type: 'SESSION_EXPIRED' }
   | { type: 'ERROR'; code: string; message: string }
 
@@ -26,6 +32,7 @@ export class SignalClient {
   private reconnectStartedAt: number | null = null
   private intentionalClose = false
   private autoReconnect: boolean
+  private pendingOutbound: string[] = []
 
   constructor(url: string, options?: { autoReconnect?: boolean }) {
     this.url = url
@@ -42,18 +49,19 @@ export class SignalClient {
 
     this.ws.onopen = () => {
       this.clearReconnect()
-      this.emitState('connected')
       this.bindSessionIfPresent()
+      const queued = this.pendingOutbound
+      this.pendingOutbound = []
+      for (const payload of queued) {
+        this.ws?.send(payload)
+      }
+      this.emitState('connected')
     }
 
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data as string) as DesktopInboundMessage
-        if (
-          message.type === 'ERROR' &&
-          'code' in message &&
-          (message.code === 'UNAUTHORIZED' || message.code === 'INVALID_TOKEN')
-        ) {
+        if (message.type === 'ERROR' && 'code' in message && message.code === 'INVALID_TOKEN') {
           import('@/lib/api-fetch').then(({ forceSessionExpiry }) => forceSessionExpiry())
         }
         this.listeners.forEach((listener) => listener(message))
@@ -90,9 +98,13 @@ export class SignalClient {
   }
 
   send(message: OutboundSignalMessage | AuthOutboundMessage): void {
+    const payload = JSON.stringify(message)
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message))
+      this.ws.send(payload)
+      return
     }
+    this.pendingOutbound.push(payload)
+    this.connect()
   }
 
   refreshSession(): void {

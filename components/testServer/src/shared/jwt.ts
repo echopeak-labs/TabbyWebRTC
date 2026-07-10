@@ -15,7 +15,11 @@ let jwks: ReturnType<typeof jose.createRemoteJWKSet> | undefined;
 
 function getJwks(): ReturnType<typeof jose.createRemoteJWKSet> {
   if (!jwks) {
-    jwks = jose.createRemoteJWKSet(new URL(process.env.CLERK_JWKS_URL!));
+    const jwksUrl = process.env.CLERK_JWKS_URL?.trim();
+    if (!jwksUrl) {
+      throw new Error('CLERK_JWKS_URL is not configured');
+    }
+    jwks = jose.createRemoteJWKSet(new URL(jwksUrl));
   }
   return jwks;
 }

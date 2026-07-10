@@ -15,7 +15,7 @@ pub enum InboundMessage {
     #[serde(rename_all = "camelCase")]
     SdpAnswer {
         tab_id: String,
-        sdp: String,
+        sdp: serde_json::Value,
     },
     #[serde(rename_all = "camelCase")]
     IceCandidate {
@@ -48,7 +48,7 @@ pub enum OutboundMessage {
     #[serde(rename_all = "camelCase")]
     SdpOffer {
         source_id: String,
-        sdp: String,
+        sdp: serde_json::Value,
         target_connection_id: String,
     },
     #[serde(rename_all = "camelCase")]

@@ -45,7 +45,7 @@ export class AgentsController {
           id: agent.agentId,
           name: agent.name ?? agent.agentId,
           platform: agent.platform,
-          online: agent.online,
+          online: Boolean(this.connections.findAgentConnectionId(agent.agentId)),
           lastSeen: new Date(agent.lastSeen).toISOString(),
         })),
       };

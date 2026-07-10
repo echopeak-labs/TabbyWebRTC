@@ -118,7 +118,7 @@ hide_cursor = true         # Hide OS cursor from capture stream
 
 [http]
 thumbnail_port = 7700
-bind = "127.0.0.1"         # LAN opt-in: set "0.0.0.0" for network access
+bind = "0.0.0.0"           # loopback-only: set "127.0.0.1"; LAN guests need 0.0.0.0 + local_token
 
 [input]
 enabled = true             # false blocks all remote keyboard/mouse/clipboard/commands
@@ -137,7 +137,7 @@ Config is loaded at startup. If the config file does not exist, defaults are use
 - Signaling authorization is necessary but not sufficient for destructive control: remote `SHUTDOWN` / `RESTART` are denied unless `input.allow_remote_power = true`.
 - All remote input can be disabled with `input.enabled = false`.
 - When `session_crypto.required = true` (and backend `REQUIRE_ENCRYPTED_SALT=true`), approve must include `encryptedSalt` and the agent must decrypt it with the pairing private key before accepting a subscriber.
-- Local HTTP defaults to loopback (`127.0.0.1`); authenticated routes still require the HMAC `local_token` from `/info`.
+- Local HTTP listens on all interfaces by default (`0.0.0.0`) so same-LAN guests can reach the agent; authenticated routes still require the HMAC `local_token` from `/info`. Set `http.bind = "127.0.0.1"` to restrict to loopback.
 - Agent JWT possession (keychain) plus live signaling registration is the WAN trust boundary; TURN credentials are fetched with the agent JWT when `signaling.api_url` is configured.
 
 ---

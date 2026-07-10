@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  normalizeAgentBaseUrl,
   probeAgentInfo,
+  readRememberedHosts,
   readStoredLocalEndpoint,
   storeLocalEndpoint,
 } from '@/lib/local-agent'
@@ -70,18 +72,31 @@ async function probeLocalAgent(baseUrl: string, agentId: string): Promise<LocalP
 
 async function resolveLocalAgent(agentId: string): Promise<LocalProbeResult | null> {
   const stored = readStoredLocalEndpoint()
-  if (stored) {
-    const probed = await probeLocalAgent(stored, agentId)
-    if (probed) {
-      return probed
-    }
-  }
+  const remembered = readRememberedHosts().map((host) =>
+    host.includes('://') ? host.replace(/\/$/, '') : `http://${host}`,
+  )
+  const host = window.location.hostname
+  const sameHostLan =
+    host && host !== 'localhost' && host !== '127.0.0.1'
+      ? `http://${host}:7700`
+      : null
+  const loopback =
+    host === 'localhost' || host === '127.0.0.1'
+      ? ['http://127.0.0.1:7700', 'http://localhost:7700']
+      : []
+  const candidates = [
+    stored,
+    ...remembered,
+    sameHostLan,
+    ...loopback,
+  ]
+    .map((value) => (value ? normalizeAgentBaseUrl(value) : null))
+    .filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index)
 
-  const candidates = ['http://127.0.0.1:7700', 'http://localhost:7700']
   for (const url of candidates) {
     const probed = await probeLocalAgent(url, agentId)
     if (probed) {
-      storeLocalEndpoint(url)
+      storeLocalEndpoint(probed.baseUrl)
       return probed
     }
   }
@@ -123,9 +138,10 @@ export function useAgentSources(token: string | null, agentId: string | null): {
       const mapped = mapSources(displays, apps, state)
       setDisplays(mapped.displays)
       setApps(mapped.apps)
-      if (localEndpoint) {
-        storeLocalEndpoint(localEndpoint)
-        setAgentBaseUrl(localEndpoint)
+      const normalized = localEndpoint ? normalizeAgentBaseUrl(localEndpoint) : null
+      if (normalized) {
+        storeLocalEndpoint(normalized)
+        setAgentBaseUrl(normalized)
       }
       setAgentOnline(true)
     },
@@ -154,12 +170,11 @@ export function useAgentSources(token: string | null, agentId: string | null): {
       setLocalToken(null)
     }
 
-    signalClient.send({ type: 'REQUEST_SOURCES', agentId })
-
-    const state = useAgentStore.getState()
-    if (state.displays.length === 0 && state.apps.length === 0) {
-      setAgentOnline(false)
+    signalClient.bindSession(token)
+    if (!signalClient.isConnected) {
+      signalClient.connect()
     }
+    signalClient.send({ type: 'REQUEST_SOURCES', agentId })
     setLoading(false)
   }, [agentId, applySources, setAgentBaseUrl, setLocalToken, token])
 
@@ -168,6 +183,7 @@ export function useAgentSources(token: string | null, agentId: string | null): {
       return
     }
 
+    signalClient.bindSession(token)
     if (!signalClient.isConnected) {
       signalClient.connect()
     }
@@ -179,8 +195,29 @@ export function useAgentSources(token: string | null, agentId: string | null): {
         apps?: SourceView[]
         localEndpoint?: string
       }
-      if (raw.type === 'AGENT_SOURCES' && raw.displays && raw.apps) {
+      if (
+        raw.type === 'AGENT_SOURCES' &&
+        Array.isArray(raw.displays) &&
+        Array.isArray(raw.apps)
+      ) {
         applySources(raw.displays, raw.apps, raw.localEndpoint)
+        if (raw.localEndpoint) {
+          void (async () => {
+            const normalized = normalizeAgentBaseUrl(raw.localEndpoint!)
+            if (!normalized) {
+              return
+            }
+            const probed = await probeLocalAgent(normalized, agentId)
+            if (probed) {
+              setLocalToken(probed.localToken)
+              setAgentBaseUrl(probed.baseUrl)
+              const sources = await fetchLocalSources(probed.baseUrl, probed.localToken)
+              if (sources) {
+                applySources(sources.displays, sources.apps, probed.baseUrl)
+              }
+            }
+          })()
+        }
         return
       }
       if (raw.type === 'AGENT_OFFLINE') {
@@ -188,14 +225,29 @@ export function useAgentSources(token: string | null, agentId: string | null): {
       }
     })
 
+    const onState = signalClient.onConnectionState((state) => {
+      if (state === 'connected') {
+        signalClient.bindSession(token)
+        signalClient.send({ type: 'REQUEST_SOURCES', agentId })
+      }
+    })
+
     void loadSources()
     const interval = setInterval(() => void loadSources(), SOURCE_POLL_MS)
+    const offlineTimer = window.setTimeout(() => {
+      const state = useAgentStore.getState()
+      if (state.displays.length === 0 && state.apps.length === 0) {
+        setAgentOnline(false)
+      }
+    }, 4000)
 
     return () => {
       unsub()
+      onState()
       clearInterval(interval)
+      window.clearTimeout(offlineTimer)
     }
-  }, [agentId, applySources, loadSources, token])
+  }, [agentId, applySources, loadSources, setAgentBaseUrl, setLocalToken, token])
 
   return { loading, agentOnline, refresh: loadSources }
 }
