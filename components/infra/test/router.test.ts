@@ -33,6 +33,14 @@ describe('router dispatch', () => {
     expect(getHandlerForMessageType('REFRESH_SESSION')).toBeDefined();
   });
 
+  it('resolves BIND_SESSION handler', () => {
+    expect(getHandlerForMessageType('BIND_SESSION')).toBeDefined();
+  });
+
+  it('resolves REQUEST_SOURCES handler', () => {
+    expect(getHandlerForMessageType('REQUEST_SOURCES')).toBeDefined();
+  });
+
   it('returns undefined for unknown message types', () => {
     expect(getHandlerForMessageType('AUTH_APPROVE')).toBeUndefined();
     expect(getHandlerForMessageType('NOT_A_REAL_TYPE')).toBeUndefined();

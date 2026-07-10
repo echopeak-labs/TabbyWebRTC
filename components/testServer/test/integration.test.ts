@@ -108,6 +108,8 @@ describe('auth and signaling integration', () => {
         publicKey: 'pk',
         platform: 'linux',
         name: 'Test Agent',
+        pairingToken: 'pending-agent-jwt',
+        pairingNonce: 'test-nonce',
       });
 
       const browserWs = new WebSocket(`ws://127.0.0.1:${port}?clientType=browser`);

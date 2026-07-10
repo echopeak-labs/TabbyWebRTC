@@ -1,4 +1,5 @@
 import type { DesktopInboundMessage, OutboundSignalMessage } from '@/types/signaling'
+import { readSession } from '@/lib/auth-sync'
 
 export type AuthInboundMessage =
   | { type: 'SESSION_PENDING'; pendingSessionId: string; expiresIn: number }
@@ -6,7 +7,9 @@ export type AuthInboundMessage =
   | { type: 'SESSION_EXPIRED' }
   | { type: 'ERROR'; code: string; message: string }
 
-export type AuthOutboundMessage = { type: 'REFRESH_SESSION' }
+export type AuthOutboundMessage =
+  | { type: 'REFRESH_SESSION' }
+  | { type: 'BIND_SESSION'; token: string }
 
 type MessageListener = (message: DesktopInboundMessage) => void
 type ConnectionStateListener = (state: 'connected' | 'disconnected' | 'offline') => void
@@ -40,6 +43,7 @@ export class SignalClient {
     this.ws.onopen = () => {
       this.clearReconnect()
       this.emitState('connected')
+      this.bindSessionIfPresent()
     }
 
     this.ws.onmessage = (event) => {
@@ -88,6 +92,10 @@ export class SignalClient {
     this.send({ type: 'REFRESH_SESSION' })
   }
 
+  bindSession(token: string): void {
+    this.send({ type: 'BIND_SESSION', token })
+  }
+
   subscribeToSource(sourceId: string, tabId: string): void {
     this.send({ type: 'SUBSCRIBE', sourceId, tabId })
   }
@@ -119,6 +127,13 @@ export class SignalClient {
 
   get isConnected(): boolean {
     return this.connected
+  }
+
+  private bindSessionIfPresent(): void {
+    const session = readSession()
+    if (session) {
+      this.bindSession(session.token)
+    }
   }
 
   private emitState(state: 'connected' | 'disconnected' | 'offline'): void {

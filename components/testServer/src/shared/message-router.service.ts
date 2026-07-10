@@ -78,8 +78,15 @@ export class MessageRouterService {
           connection,
         );
       },
-      SDP_OFFER: async (msg) => {
-        await this.signalingHandler.handleSdpOffer(msg as unknown as SdpOfferMessage);
+      SDP_OFFER: async (msg, connectionId) => {
+        const connection = this.connections.getConnection(connectionId);
+        if (!connection) {
+          throw new Error('CONNECTION_NOT_FOUND');
+        }
+        await this.signalingHandler.handleSdpOffer(
+          msg as unknown as SdpOfferMessage,
+          connection,
+        );
       },
       SDP_ANSWER: async (msg, connectionId) => {
         const connection = this.connections.getConnection(connectionId);
@@ -107,6 +114,26 @@ export class MessageRouterService {
           throw new Error('CONNECTION_NOT_FOUND');
         }
         await this.authHandler.handleRefreshSession(connection);
+      },
+      BIND_SESSION: async (msg, connectionId) => {
+        const connection = this.connections.getConnection(connectionId);
+        if (!connection) {
+          throw new Error('CONNECTION_NOT_FOUND');
+        }
+        await this.authHandler.handleBindSession(
+          msg as { type: 'BIND_SESSION'; token: string },
+          connection,
+        );
+      },
+      REQUEST_SOURCES: async (msg, connectionId) => {
+        const connection = this.connections.getConnection(connectionId);
+        if (!connection) {
+          throw new Error('CONNECTION_NOT_FOUND');
+        }
+        await this.signalingHandler.handleRequestSources(
+          msg as { type: 'REQUEST_SOURCES'; agentId: string },
+          connection,
+        );
       },
     };
     return handlers[type];

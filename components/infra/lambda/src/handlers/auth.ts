@@ -5,6 +5,7 @@ import {
   extractBearerToken,
   issueTabbyWebRTCToken,
   verifyClerkJwt,
+  verifyTabbyWebRTCToken,
 } from '../lib/jwt.js';
 import {
   createPendingSession,
@@ -14,7 +15,7 @@ import {
   rotatePendingSession,
 } from '../lib/pending-sessions.js';
 import { sendToConnection } from '../lib/send-to-connection.js';
-import type { ConnectionRecord } from '../types.js';
+import type { BindSessionMessage, ConnectionRecord } from '../types.js';
 
 function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
   return {
@@ -74,6 +75,26 @@ export async function handleRefreshSession(connection: ConnectionRecord): Promis
     type: 'SESSION_PENDING',
     pendingSessionId: session.pendingSessionId,
     expiresIn: PENDING_SESSION_EXPIRES_SECONDS,
+  });
+}
+
+export async function handleBindSession(
+  message: BindSessionMessage,
+  connection: ConnectionRecord,
+): Promise<void> {
+  if (connection.clientType !== 'browser') {
+    throw new Error('INVALID_CLIENT');
+  }
+  if (!message.token) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  const payload = await verifyTabbyWebRTCToken(message.token);
+  await updateConnection(connection.connectionId, {
+    token: message.token,
+    userId: payload.sub,
+    agentId: payload.agentId,
+    pendingSessionId: null,
   });
 }
 

@@ -39,7 +39,15 @@ export async function getPendingSession(
       Key: { pendingSessionId },
     }),
   );
-  return result.Item as PendingSessionRecord | undefined;
+  const record = result.Item as PendingSessionRecord | undefined;
+  if (!record) {
+    return undefined;
+  }
+  if (record.expiresAt <= Math.floor(Date.now() / 1000)) {
+    await deletePendingSession(pendingSessionId);
+    return undefined;
+  }
+  return record;
 }
 
 export async function deletePendingSession(pendingSessionId: string): Promise<void> {

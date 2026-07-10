@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::Context;
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,
@@ -94,16 +94,42 @@ pub fn spawn(
     Ok((state, addr))
 }
 
+fn token_for_window(secret: &[u8; 32], agent_id: &str, window: u64) -> String {
+    let payload = format!("{agent_id}:{window}");
+    let mut mac = HmacSha256::new_from_slice(secret).expect("hmac key");
+    mac.update(payload.as_bytes());
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes())
+}
+
 fn current_local_token(secret: &[u8; 32], agent_id: &str) -> String {
     let epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+    token_for_window(secret, agent_id, epoch / 60)
+}
+
+fn extract_bearer(headers: &HeaderMap) -> Option<String> {
+    let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
+    let token = value.strip_prefix("Bearer ").or_else(|| value.strip_prefix("bearer "))?;
+    Some(token.to_string())
+}
+
+fn validate_local_token(state: &LocalServerState, headers: &HeaderMap) -> Result<(), StatusCode> {
+    let provided = extract_bearer(headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let epoch = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
     let window = epoch / 60;
-    let payload = format!("{agent_id}:{window}");
-    let mut mac = HmacSha256::new_from_slice(secret).expect("hmac key");
-    mac.update(payload.as_bytes());
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes())
+    let agent_id = &state.config.agent.id;
+    let current = token_for_window(&state.hmac_secret, agent_id, window);
+    let previous = token_for_window(&state.hmac_secret, agent_id, window.saturating_sub(1));
+    if provided == current || provided == previous {
+        Ok(())
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
 }
 
 async fn info_handler(State(state): State<Arc<LocalServerState>>) -> Json<InfoResponse> {
@@ -116,7 +142,11 @@ async fn info_handler(State(state): State<Arc<LocalServerState>>) -> Json<InfoRe
     })
 }
 
-async fn sources_handler(State(state): State<Arc<LocalServerState>>) -> Json<SourcesResponse> {
+async fn sources_handler(
+    State(state): State<Arc<LocalServerState>>,
+    headers: HeaderMap,
+) -> Result<Json<SourcesResponse>, StatusCode> {
+    validate_local_token(&state, &headers)?;
     let sources = state.sources.read().await;
     let mut displays = Vec::new();
     let mut apps = Vec::new();
@@ -132,13 +162,15 @@ async fn sources_handler(State(state): State<Arc<LocalServerState>>) -> Json<Sou
             SourceKind::App => apps.push(view),
         }
     }
-    Json(SourcesResponse { displays, apps })
+    Ok(Json(SourcesResponse { displays, apps }))
 }
 
 async fn thumbnail_handler(
-    State(_state): State<Arc<LocalServerState>>,
+    State(state): State<Arc<LocalServerState>>,
+    headers: HeaderMap,
     Path(source_id): Path<String>,
 ) -> Result<Response, StatusCode> {
+    validate_local_token(&state, &headers)?;
     let jpeg = capture::capture_thumbnail(&source_id).map_err(|_| StatusCode::NOT_FOUND)?;
     Ok((
         [(header::CONTENT_TYPE, "image/jpeg")],
@@ -147,8 +179,13 @@ async fn thumbnail_handler(
         .into_response())
 }
 
-async fn signal_ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
-    ws.on_upgrade(|socket| async move {
+async fn signal_ws_handler(
+    State(state): State<Arc<LocalServerState>>,
+    headers: HeaderMap,
+    ws: WebSocketUpgrade,
+) -> Result<impl IntoResponse, StatusCode> {
+    validate_local_token(&state, &headers)?;
+    Ok(ws.on_upgrade(|socket| async move {
         use axum::extract::ws::Message;
         use futures_util::{SinkExt, StreamExt};
         let mut socket = socket;
@@ -157,7 +194,7 @@ async fn signal_ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
                 let _ = socket.send(Message::Text(text)).await;
             }
         }
-    })
+    }))
 }
 
 pub async fn advertise_mdns(port: u16, agent_name: &str) -> anyhow::Result<()> {

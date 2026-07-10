@@ -93,6 +93,33 @@ describe('signaling round-trip', () => {
     apiMock.reset();
     apiMock.on(PostToConnectionCommand).resolves({});
 
+    ddbMock.on(GetCommand).callsFake((input) => {
+      if (input.TableName === 'connections' && input.Key?.connectionId === agentConnectionId) {
+        return {
+          Item: {
+            connectionId: agentConnectionId,
+            clientType: 'agent',
+            agentId,
+            userId: 'user-1',
+            connectedAt: Date.now(),
+            TTL: 9999999999,
+          },
+        };
+      }
+      if (input.TableName === 'source-locks') {
+        return {
+          Item: {
+            sourceId,
+            tabId,
+            connectionId: browserConnectionId,
+            agentId,
+            TTL: 9999999999,
+          },
+        };
+      }
+      return {};
+    });
+
     await dispatchMessage(
       {
         type: 'SDP_OFFER',
@@ -112,6 +139,73 @@ describe('signaling round-trip', () => {
       sourceId,
       sdp: { type: 'offer', sdp: 'v=0' },
     });
+  });
+
+  it('rejects SDP_OFFER from non-agent connections', async () => {
+    const browserConnectionId = 'browser-conn';
+    const agentId = 'agent-1';
+
+    ddbMock.on(GetCommand).callsFake((input) => {
+      if (input.TableName === 'connections') {
+        return {
+          Item: {
+            connectionId: browserConnectionId,
+            clientType: 'browser',
+            agentId,
+            userId: 'user-1',
+            connectedAt: Date.now(),
+            TTL: 9999999999,
+          },
+        };
+      }
+      return {};
+    });
+
+    await expect(
+      dispatchMessage(
+        {
+          type: 'SDP_OFFER',
+          sourceId: 'display-1',
+          sdp: { type: 'offer', sdp: 'v=0' },
+          targetConnectionId: 'other',
+        },
+        browserConnectionId,
+      ),
+    ).rejects.toThrow('UNAUTHORIZED');
+  });
+
+  it('rejects AGENT_REGISTER when message agentId mismatches JWT binding', async () => {
+    const agentConnectionId = 'agent-conn';
+
+    ddbMock.on(GetCommand).callsFake((input) => {
+      if (input.TableName === 'connections') {
+        return {
+          Item: {
+            connectionId: agentConnectionId,
+            clientType: 'agent',
+            agentId: 'agent-bound',
+            userId: 'user-1',
+            connectedAt: Date.now(),
+            TTL: 9999999999,
+          },
+        };
+      }
+      return {};
+    });
+
+    await expect(
+      dispatchMessage(
+        {
+          type: 'AGENT_REGISTER',
+          agentId: 'agent-other',
+          publicKey: 'pk',
+          platform: 'linux',
+          displays: [],
+          apps: [],
+        },
+        agentConnectionId,
+      ),
+    ).rejects.toThrow('AGENT_ID_MISMATCH');
   });
 
   it('returns SOURCE_IN_USE when source is locked by another tab', async () => {

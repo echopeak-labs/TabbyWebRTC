@@ -21,6 +21,8 @@ pub struct AgentSection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignalingSection {
     pub url: String,
+    #[serde(default)]
+    pub api_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +47,7 @@ impl Default for AgentConfig {
             },
             signaling: SignalingSection {
                 url: "wss://signal.tabbywebrtc.com/prod".into(),
+                api_url: "https://api.tabbywebrtc.com/prod".into(),
             },
             capture: CaptureSection {
                 encoder: "auto".into(),

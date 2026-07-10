@@ -1,5 +1,7 @@
 import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import { randomUUID } from 'node:crypto';
 import {
+  consumePairingClaim,
   getAgent,
   listAgentsByUserId,
   pairAgent,
@@ -42,6 +44,7 @@ async function handlePairAgent(
     publicKey?: string;
     platform?: string;
     name?: string;
+    pairingNonce?: string;
   },
 ): Promise<APIGatewayProxyResult> {
   const { userId } = await verifyClerkJwt(clerkToken);
@@ -57,21 +60,48 @@ async function handlePairAgent(
     return jsonResponse(403, { error: 'Agent already paired to another user' });
   }
 
+  const agentJwt = await issueAgentJwt(body.agentId, userId);
+  const pairingNonce = body.pairingNonce || randomUUID();
+
   await pairAgent({
     agentId: body.agentId,
     userId,
     publicKey: body.publicKey,
     platform: body.platform,
     name: body.name,
+    pairingToken: agentJwt,
+    pairingNonce,
   });
 
-  const agentJwt = await issueAgentJwt(body.agentId, userId);
+  return jsonResponse(200, { agentJwt, pairingNonce });
+}
+
+async function handlePairClaim(
+  agentId: string | undefined,
+  nonce: string | undefined,
+): Promise<APIGatewayProxyResult> {
+  if (!agentId || !nonce) {
+    return jsonResponse(400, { error: 'agentId and nonce are required' });
+  }
+
+  const agentJwt = await consumePairingClaim(agentId, nonce);
+  if (!agentJwt) {
+    return jsonResponse(404, { error: 'Pairing claim not found or expired' });
+  }
+
   return jsonResponse(200, { agentJwt });
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const method = event.httpMethod;
   const path = event.path;
+
+  if (method === 'GET' && path.endsWith('/agents/pair-claim')) {
+    return handlePairClaim(
+      event.queryStringParameters?.agentId,
+      event.queryStringParameters?.nonce,
+    );
+  }
 
   if (method === 'GET' && path.endsWith('/agents')) {
     const token = extractBearerToken(
@@ -100,6 +130,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       publicKey?: string;
       platform?: string;
       name?: string;
+      pairingNonce?: string;
     };
     try {
       body = JSON.parse(event.body ?? '{}') as typeof body;

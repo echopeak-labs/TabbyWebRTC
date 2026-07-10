@@ -12,8 +12,10 @@ import { PendingSessionStore } from '../src/storage/pending-session.store';
 import { SignalingHandlerService } from '../src/shared/signaling-handler.service';
 import { ConnectionsService } from '../src/shared/connections.service';
 import { MessageSenderService } from '../src/shared/message-sender.service';
+import { AgentsService } from '../src/shared/agents.service';
 import { ConnectionStore } from '../src/storage/connection.store';
 import { SourceLockStore } from '../src/storage/source-lock.store';
+import { AgentStore } from '../src/storage/agent.store';
 
 describe('jwt helpers via lambda import', () => {
   beforeAll(() => {
@@ -122,7 +124,8 @@ describe('source lock contention', () => {
     messageSender.sendToConnection = async (connectionId, payload) => {
       sent.push({ connectionId, payload });
     };
-    signaling = new SignalingHandlerService(connections, messageSender, sourceLockStore);
+    const agents = new AgentsService(new AgentStore(), connections, messageSender);
+    signaling = new SignalingHandlerService(connections, messageSender, sourceLockStore, agents);
 
     const token = await issueTabbyWebRTCToken('user-1', 'agent-1');
     connections.putConnection('browser-1', 'browser', { agentId: 'agent-1', userId: 'user-1' });

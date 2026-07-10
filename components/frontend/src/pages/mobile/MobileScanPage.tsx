@@ -25,6 +25,8 @@ function parseQRPayload(raw: string): QRPayload | null {
         publicKey: data.publicKey,
         platform: data.platform as PairQRPayload['platform'],
         name: typeof data.name === 'string' ? data.name : undefined,
+        localEndpoint: typeof data.localEndpoint === 'string' ? data.localEndpoint : undefined,
+        pairingNonce: typeof data.pairingNonce === 'string' ? data.pairingNonce : undefined,
       }
     }
     if (
@@ -42,6 +44,31 @@ function parseQRPayload(raw: string): QRPayload | null {
   } catch {
     return null
   }
+}
+
+async function deliverAgentJwt(
+  agentJwt: string,
+  endpoints: string[],
+): Promise<boolean> {
+  for (const base of endpoints) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 3000)
+      const response = await fetch(`${base.replace(/\/$/, '')}/pair`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: agentJwt }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (response.ok) {
+        return true
+      }
+    } catch {
+      // try next endpoint
+    }
+  }
+  return false
 }
 
 export function MobileScanPage() {
@@ -91,6 +118,7 @@ export function MobileScanPage() {
         }
         const name = payload.name ?? `Machine ${payload.agentId.slice(0, 8)}`
         const platform = payload.platform ?? 'linux'
+        const pairingNonce = payload.pairingNonce ?? crypto.randomUUID()
         const response = await fetch(`${REST_URL}/agents/pair`, {
           method: 'POST',
           headers: {
@@ -102,12 +130,26 @@ export function MobileScanPage() {
             publicKey: payload.publicKey,
             name,
             platform,
+            pairingNonce,
           }),
         })
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as { error?: string }
           throw new Error(body.error ?? 'Pairing failed')
         }
+        const pairBody = (await response.json()) as { agentJwt?: string }
+        if (!pairBody.agentJwt) {
+          throw new Error('Pairing response missing agentJwt')
+        }
+
+        const endpoints = [
+          payload.localEndpoint,
+          'http://127.0.0.1:7700',
+          'http://localhost:7700',
+        ].filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index)
+
+        await deliverAgentJwt(pairBody.agentJwt, endpoints)
+
         const agent = {
           agentId: payload.agentId,
           name,

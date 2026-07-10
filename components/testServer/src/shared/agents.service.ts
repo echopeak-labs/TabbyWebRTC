@@ -28,6 +28,8 @@ export class AgentsService {
     publicKey: string;
     platform: string;
     name: string;
+    pairingToken: string;
+    pairingNonce: string;
   }): AgentRecord {
     const now = Date.now();
     const item: AgentRecord = {
@@ -41,9 +43,29 @@ export class AgentsService {
       apps: [],
       online: false,
       lastSeen: now,
+      pairingToken: input.pairingToken,
+      pairingNonce: input.pairingNonce,
+      pairingExpiresAt: Math.floor(now / 1000) + 600,
     };
     this.store.set(input.agentId, item);
     return item;
+  }
+
+  consumePairingClaim(agentId: string, nonce: string): string | undefined {
+    const agent = this.store.get(agentId);
+    if (!agent?.pairingToken || !agent.pairingNonce || !agent.pairingExpiresAt) {
+      return undefined;
+    }
+    if (agent.pairingNonce !== nonce) {
+      return undefined;
+    }
+    if (agent.pairingExpiresAt <= Math.floor(Date.now() / 1000)) {
+      return undefined;
+    }
+    const token = agent.pairingToken;
+    const { pairingToken: _t, pairingNonce: _n, pairingExpiresAt: _e, ...rest } = agent;
+    this.store.set(agentId, rest);
+    return token;
   }
 
   markAgentOffline(agentId: string): void {

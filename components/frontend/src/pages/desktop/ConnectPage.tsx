@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { writeSession } from '@/lib/auth-sync'
-import { SignalClient } from '@/lib/signal-client'
+import { signalClient } from '@/lib/signal-client'
 import type { SessionQRPayload } from '@/types/auth'
 
 const WS_URL = import.meta.env.VITE_WS_URL
@@ -93,9 +93,9 @@ function LocalNetworkModal({
 
 export function ConnectPage() {
   const navigate = useNavigate()
-  const clientRef = useRef<SignalClient | null>(null)
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const authorizedRef = useRef(false)
 
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
   const [expiresIn, setExpiresIn] = useState(30)
@@ -143,26 +143,28 @@ export function ConnectPage() {
         })
       }, 1000)
       refreshTimerRef.current = setInterval(() => {
-        clientRef.current?.refreshSession()
+        signalClient.refreshSession()
       }, REFRESH_INTERVAL_S * 1000)
     },
     [clearTimers],
   )
 
   useEffect(() => {
-    const client = new SignalClient(WS_URL)
-    clientRef.current = client
-    client.connect()
+    signalClient.connect()
 
-    const unsubscribe = client.onMessage((message) => {
+    const unsubscribe = signalClient.onMessage((message) => {
       switch (message.type) {
         case 'SESSION_PENDING':
+          if (authorizedRef.current) {
+            break
+          }
           setPendingSessionId(message.pendingSessionId)
           startCountdown(message.expiresIn)
           setStatus('waiting')
           setError(null)
           break
         case 'AUTH_APPROVED':
+          authorizedRef.current = true
           setStatus('authorized')
           clearTimers()
           writeSession(message.token, message.agentId)
@@ -172,10 +174,13 @@ export function ConnectPage() {
           }, 600)
           break
         case 'SESSION_EXPIRED':
+          if (authorizedRef.current) {
+            break
+          }
           setStatus('idle')
           setPendingSessionId(null)
           setError('Session expired. Refreshing QR code…')
-          client.refreshSession()
+          signalClient.refreshSession()
           break
         case 'ERROR':
           setError(message.message)
@@ -186,7 +191,6 @@ export function ConnectPage() {
     return () => {
       unsubscribe()
       clearTimers()
-      client.disconnect()
     }
   }, [clearTimers, navigate, startCountdown])
 

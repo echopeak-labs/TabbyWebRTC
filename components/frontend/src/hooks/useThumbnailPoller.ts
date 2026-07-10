@@ -6,11 +6,11 @@ const POLL_INTERVAL_MS = 300_000
 async function fetchThumbnail(
   baseUrl: string,
   sourceId: string,
-  token: string,
+  localToken: string,
 ): Promise<string | null> {
   const url = `${baseUrl}/thumbnail/${sourceId}`
   const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${localToken}` },
   })
 
   if (!response.ok) {
@@ -21,14 +21,15 @@ async function fetchThumbnail(
   return URL.createObjectURL(blob)
 }
 
-export function useThumbnailPoller(token: string | null): void {
+export function useThumbnailPoller(_sessionToken: string | null): void {
   const agentBaseUrl = useAgentStore((s) => s.agentBaseUrl)
+  const localToken = useAgentStore((s) => s.localToken)
   const displays = useAgentStore((s) => s.displays)
   const apps = useAgentStore((s) => s.apps)
   const setThumbnail = useAgentStore((s) => s.setThumbnail)
 
   useEffect(() => {
-    if (!token || !agentBaseUrl) {
+    if (!localToken || !agentBaseUrl) {
       return
     }
 
@@ -42,7 +43,7 @@ export function useThumbnailPoller(token: string | null): void {
     const poll = async () => {
       for (const sourceId of sourceIds) {
         if (cancelled) return
-        const url = await fetchThumbnail(agentBaseUrl, sourceId, token)
+        const url = await fetchThumbnail(agentBaseUrl, sourceId, localToken)
         if (url && !cancelled) {
           setThumbnail(sourceId, url)
         }
@@ -56,5 +57,5 @@ export function useThumbnailPoller(token: string | null): void {
       cancelled = true
       clearInterval(interval)
     }
-  }, [agentBaseUrl, apps, displays, setThumbnail, token])
+  }, [agentBaseUrl, apps, displays, localToken, setThumbnail])
 }

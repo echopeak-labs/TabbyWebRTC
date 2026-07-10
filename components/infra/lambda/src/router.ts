@@ -6,9 +6,10 @@ import { onConnect } from './connect.js';
 import { onDisconnect } from './disconnect.js';
 import { getConnection } from './lib/connections.js';
 import { handleAgentHeartbeat, handleAgentRegister } from './handlers/agent-ws.js';
-import { handleRefreshSession } from './handlers/auth.js';
+import { handleBindSession, handleRefreshSession } from './handlers/auth.js';
 import {
   handleIceCandidate,
+  handleRequestSources,
   handleSdpAnswer,
   handleSdpOffer,
   handleSubscribe,
@@ -17,6 +18,7 @@ import {
 import type {
   AgentHeartbeatMessage,
   AgentRegisterMessage,
+  BindSessionMessage,
   IceCandidateMessage,
   InboundMessage,
   SdpAnswerMessage,
@@ -59,8 +61,12 @@ const MESSAGE_HANDLERS: Record<string, MessageHandler> = {
     }
     await handleUnsubscribe(message as unknown as UnsubscribeMessage, connection);
   },
-  SDP_OFFER: async (message) => {
-    await handleSdpOffer(message as unknown as SdpOfferMessage);
+  SDP_OFFER: async (message, connectionId) => {
+    const connection = await getConnection(connectionId);
+    if (!connection) {
+      throw new Error('CONNECTION_NOT_FOUND');
+    }
+    await handleSdpOffer(message as unknown as SdpOfferMessage, connection);
   },
   SDP_ANSWER: async (message, connectionId) => {
     const connection = await getConnection(connectionId);
@@ -82,6 +88,23 @@ const MESSAGE_HANDLERS: Record<string, MessageHandler> = {
       throw new Error('CONNECTION_NOT_FOUND');
     }
     await handleRefreshSession(connection);
+  },
+  BIND_SESSION: async (message, connectionId) => {
+    const connection = await getConnection(connectionId);
+    if (!connection) {
+      throw new Error('CONNECTION_NOT_FOUND');
+    }
+    await handleBindSession(message as unknown as BindSessionMessage, connection);
+  },
+  REQUEST_SOURCES: async (message, connectionId) => {
+    const connection = await getConnection(connectionId);
+    if (!connection) {
+      throw new Error('CONNECTION_NOT_FOUND');
+    }
+    await handleRequestSources(
+      message as unknown as { type: 'REQUEST_SOURCES'; agentId: string },
+      connection,
+    );
   },
 };
 

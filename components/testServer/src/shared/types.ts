@@ -31,6 +31,9 @@ export interface AgentRecord {
   online: boolean;
   lastSeen: number;
   TTL?: number;
+  pairingToken?: string;
+  pairingNonce?: string;
+  pairingExpiresAt?: number;
 }
 
 export interface SourceLockRecord {

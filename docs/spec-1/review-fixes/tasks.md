@@ -7,36 +7,36 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 ## Wave 0 — Unblock WAN session (critical)
 
 ### FE-01 Auth WebSocket lifecycle
-- [ ] Migrate ConnectPage to persistent singleton `SignalClient` (or equivalent)
-- [ ] Stop disconnecting WS on navigate to `/launchpad` after `AUTH_APPROVED`
-- [ ] If reconnect needed: implement `BIND_SESSION` (or equivalent) to re-attach JWT to new `connectionId`
+- [x] Migrate ConnectPage to persistent singleton `SignalClient` (or equivalent)
+- [x] Stop disconnecting WS on navigate to `/launchpad` after `AUTH_APPROVED`
+- [x] If reconnect needed: implement `BIND_SESSION` (or equivalent) to re-attach JWT to new `connectionId`
 - [ ] Integration test: approve → launchpad → `SUBSCRIBE` without local agent HTTP
 
 ### DA-01 Pairing JWT delivery
-- [ ] Mobile pair flow reads `agentJwt` from `POST /agents/pair` response
-- [ ] Deliver JWT to agent `POST /pair` (LAN endpoint from QR / probe) or implement poll-claim alternative
-- [ ] Agent stores JWT and reaches signaling online without manual copy
+- [x] Mobile pair flow reads `agentJwt` from `POST /agents/pair` response
+- [x] Deliver JWT to agent `POST /pair` (LAN endpoint from QR / probe) or implement poll-claim alternative
+- [x] Agent stores JWT and reaches signaling online without manual copy
 - [ ] E2E: fresh agent pair → `AGENT_REGISTER`
 
 ### INF-01 Authenticate SDP_OFFER
-- [ ] Require sender `clientType === 'agent'`
-- [ ] Verify agent owns source lock / target subscription before relay
-- [ ] Mirror in testServer
-- [ ] Unit test: foreign offer rejected
+- [x] Require sender `clientType === 'agent'`
+- [x] Verify agent owns source lock / target subscription before relay
+- [x] Mirror in testServer
+- [x] Unit test: foreign offer rejected
 
 ### INF-02 Bind AGENT_REGISTER to JWT
-- [ ] Use `connection.agentId` from JWT; reject mismatched `message.agentId`
-- [ ] Same check on `AGENT_HEARTBEAT`
-- [ ] Unit test: identity mismatch rejected
+- [x] Use `connection.agentId` from JWT; reject mismatched `message.agentId`
+- [x] Same check on `AGENT_HEARTBEAT`
+- [x] Unit test: identity mismatch rejected
 
 ---
 
 ## Wave 1 — WAN launchpad + session hygiene (high)
 
 ### FE-02 REQUEST_SOURCES / AGENT_SOURCES
-- [ ] Implement Lambda + testServer handler **or** push sources on register to browsers
-- [ ] Frontend populates launchpad on WAN-only path
-- [ ] Types aligned in `signaling.ts`
+- [x] Implement Lambda + testServer handler **or** push sources on register to browsers
+- [x] Frontend populates launchpad on WAN-only path
+- [x] Types aligned in `signaling.ts`
 
 ### FE-03 401 / session clear
 - [ ] Central REST helper clears sessionStorage + authStore + redirect `/` on 401
@@ -44,9 +44,9 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 - [ ] Manual verify with expired token
 
 ### INF-03 Pending session expiry
-- [ ] `getPendingSession` / approve rejects when `expiresAt <= now`
-- [ ] Delete stale record on read
-- [ ] Parity with testServer
+- [x] `getPendingSession` / approve rejects when `expiresAt <= now`
+- [x] Delete stale record on read
+- [x] Parity with testServer
 
 ### INF-04 Agent JWT revocation
 - [ ] Persist `jti` or token version on agent record at pair
@@ -59,10 +59,10 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 - [ ] Verify via `cdk synth`
 
 ### DA-02 Local HTTP auth
-- [ ] Require HMAC `local_token` on `/sources`, `/thumbnail/:id`, `/signal`
-- [ ] Frontend LAN probe passes token from `/info`
+- [x] Require HMAC `local_token` on `/sources`, `/thumbnail/:id`, `/signal`
+- [x] Frontend LAN probe passes token from `/info`
 - [ ] Default bind `127.0.0.1` or document LAN opt-in
-- [ ] Unauthenticated `/sources` → 401
+- [x] Unauthenticated `/sources` → 401
 
 ### DA-03 Input / power consent
 - [ ] Default-deny or confirm remote `SHUTDOWN` / `RESTART`

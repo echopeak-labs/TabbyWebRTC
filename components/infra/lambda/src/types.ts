@@ -31,6 +31,9 @@ export interface AgentRecord {
   online: boolean;
   lastSeen: number;
   TTL?: number;
+  pairingToken?: string;
+  pairingNonce?: string;
+  pairingExpiresAt?: number;
 }
 
 export interface SourceLockRecord {
@@ -95,4 +98,9 @@ export interface IceCandidateMessage {
 
 export interface RefreshSessionMessage {
   type: 'REFRESH_SESSION';
+}
+
+export interface BindSessionMessage {
+  type: 'BIND_SESSION';
+  token: string;
 }

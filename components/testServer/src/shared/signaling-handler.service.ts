@@ -9,6 +9,7 @@ import type {
   SubscribeMessage,
   UnsubscribeMessage,
 } from './types';
+import { AgentsService } from './agents.service';
 import { ConnectionsService } from './connections.service';
 import { MessageSenderService } from './message-sender.service';
 import { SourceLockStore } from '../storage/source-lock.store';
@@ -21,6 +22,7 @@ export class SignalingHandlerService {
     private readonly connections: ConnectionsService,
     private readonly messageSender: MessageSenderService,
     private readonly sourceLocks: SourceLockStore,
+    private readonly agents: AgentsService,
   ) {}
 
   private getSourceLock(sourceId: string): SourceLockRecord | undefined {
@@ -112,7 +114,19 @@ export class SignalingHandlerService {
     );
   }
 
-  async handleSdpOffer(message: SdpOfferMessage): Promise<void> {
+  async handleSdpOffer(message: SdpOfferMessage, connection: ConnectionRecord): Promise<void> {
+    if (connection.clientType !== 'agent' || !connection.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
+
+    const lock = this.getSourceLock(message.sourceId);
+    if (!lock || lock.agentId !== connection.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
+    if (lock.connectionId !== message.targetConnectionId) {
+      throw new Error('UNAUTHORIZED');
+    }
+
     await this.messageSender.sendToConnection(message.targetConnectionId, {
       type: 'SDP_OFFER',
       sourceId: message.sourceId,
@@ -169,6 +183,32 @@ export class SignalingHandlerService {
       type: 'ICE_CANDIDATE',
       tabId: lock.tabId,
       candidate: message.candidate,
+    });
+  }
+
+  async handleRequestSources(
+    message: { type: 'REQUEST_SOURCES'; agentId: string },
+    connection: ConnectionRecord,
+  ): Promise<void> {
+    const payload = await this.requireValidSessionToken(connection);
+    if (payload.agentId !== message.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
+    if (connection.agentId && connection.agentId !== message.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
+
+    const agent = this.agents.getAgent(message.agentId);
+    if (!agent) {
+      throw new Error('AGENT_OFFLINE');
+    }
+
+    await this.messageSender.sendToConnection(connection.connectionId, {
+      type: 'AGENT_SOURCES',
+      agentId: agent.agentId,
+      displays: agent.displays ?? [],
+      apps: agent.apps ?? [],
+      localEndpoint: agent.localEndpoint,
     });
   }
 }

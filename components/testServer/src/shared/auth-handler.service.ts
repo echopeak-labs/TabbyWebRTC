@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   issueTabbyWebRTCToken,
   verifyClerkJwt,
+  verifyTabbyWebRTCToken,
 } from './jwt';
 import type { ConnectionRecord } from './types';
 import { AgentsService } from './agents.service';
@@ -74,6 +75,26 @@ export class AuthHandlerService {
       type: 'SESSION_PENDING',
       pendingSessionId: session.pendingSessionId,
       expiresIn: PENDING_SESSION_EXPIRES_SECONDS,
+    });
+  }
+
+  async handleBindSession(
+    message: { type: 'BIND_SESSION'; token: string },
+    connection: ConnectionRecord,
+  ): Promise<void> {
+    if (connection.clientType !== 'browser') {
+      throw new Error('INVALID_CLIENT');
+    }
+    if (!message.token) {
+      throw new Error('UNAUTHORIZED');
+    }
+
+    const payload = await verifyTabbyWebRTCToken(message.token);
+    this.connections.updateConnection(connection.connectionId, {
+      token: message.token,
+      userId: payload.sub,
+      agentId: payload.agentId,
+      pendingSessionId: undefined,
     });
   }
 }

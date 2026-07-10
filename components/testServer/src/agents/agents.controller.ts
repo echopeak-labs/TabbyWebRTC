@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, HttpException, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpException,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import {
   extractBearerToken,
   issueAgentJwt,
@@ -37,6 +46,21 @@ export class AgentsController {
     }
   }
 
+  @Get('pair-claim')
+  pairClaim(
+    @Query('agentId') agentId: string | undefined,
+    @Query('nonce') nonce: string | undefined,
+  ) {
+    if (!agentId || !nonce) {
+      throw new HttpException({ error: 'agentId and nonce are required' }, 400);
+    }
+    const agentJwt = this.agents.consumePairingClaim(agentId, nonce);
+    if (!agentJwt) {
+      throw new HttpException({ error: 'Pairing claim not found or expired' }, 404);
+    }
+    return { agentJwt };
+  }
+
   @Post('pair')
   async pairAgent(
     @Headers('authorization') authorization: string | undefined,
@@ -46,6 +70,7 @@ export class AgentsController {
       publicKey?: string;
       platform?: string;
       name?: string;
+      pairingNonce?: string;
     },
   ) {
     const clerkToken = extractBearerToken(authorization);
@@ -67,16 +92,20 @@ export class AgentsController {
         throw new HttpException({ error: 'Agent already paired to another user' }, 403);
       }
 
+      const agentJwt = await issueAgentJwt(body.agentId, userId);
+      const pairingNonce = body.pairingNonce || randomUUID();
+
       await this.agents.pairAgent({
         agentId: body.agentId,
         userId,
         publicKey: body.publicKey,
         platform: body.platform,
         name: body.name,
+        pairingToken: agentJwt,
+        pairingNonce,
       });
 
-      const agentJwt = await issueAgentJwt(body.agentId, userId);
-      return { agentJwt };
+      return { agentJwt, pairingNonce };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

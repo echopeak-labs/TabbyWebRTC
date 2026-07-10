@@ -64,6 +64,11 @@ export class TabbyWebRtcStack extends Stack {
       authorizationType: AuthorizationType.NONE,
     });
 
+    const pairClaimResource = agentsResource.addResource('pair-claim');
+    pairClaimResource.addMethod('GET', new LambdaIntegration(lambdas.agentFn), {
+      authorizationType: AuthorizationType.NONE,
+    });
+
     const authResource = restApi.root.addResource('auth');
     const approveResource = authResource.addResource('approve');
     approveResource.addMethod('POST', new LambdaIntegration(lambdas.authFn), {

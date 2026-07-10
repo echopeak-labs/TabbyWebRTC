@@ -12,10 +12,13 @@ use ed25519_dalek::SigningKey;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{oneshot, RwLock};
+use tower_http::cors::CorsLayer;
 use tracing::info;
+use uuid::Uuid;
 
 use crate::config::AgentConfig;
 use crate::keychain;
+use input::platform_name;
 
 #[derive(Clone)]
 pub struct PairingState {
@@ -27,6 +30,33 @@ pub struct PairingState {
 #[derive(Deserialize)]
 pub struct PairCompleteRequest {
     pub token: String,
+}
+
+#[derive(Serialize)]
+struct PairQrPayload {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    #[serde(rename = "agentId")]
+    agent_id: String,
+    #[serde(rename = "publicKey")]
+    public_key: String,
+    platform: String,
+    name: String,
+    #[serde(rename = "localEndpoint")]
+    local_endpoint: String,
+    #[serde(rename = "pairingNonce")]
+    pairing_nonce: String,
+}
+
+fn detect_lan_ip() -> String {
+    if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(addr) = socket.local_addr() {
+                return addr.ip().to_string();
+            }
+        }
+    }
+    "127.0.0.1".into()
 }
 
 pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
@@ -42,17 +72,27 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
         public_b64
     };
 
-    let pairing_url = format!(
-        "https://app.tabbywebrtc.com/pair?agentId={}&pubkey={}",
-        config.agent.id, public_key_b64
-    );
+    let pairing_nonce = Uuid::new_v4().to_string();
+    let lan_ip = detect_lan_ip();
+    let local_endpoint = format!("http://{}:{}", lan_ip, config.http.thumbnail_port);
+    let qr_payload = PairQrPayload {
+        kind: "PAIR",
+        agent_id: config.agent.id.clone(),
+        public_key: public_key_b64.clone(),
+        platform: platform_name().to_string(),
+        name: config.agent.name.clone(),
+        local_endpoint: local_endpoint.clone(),
+        pairing_nonce: pairing_nonce.clone(),
+    };
+    let qr_json = serde_json::to_string(&qr_payload).context("failed to serialize pairing QR")?;
 
     info!("No agent JWT found in OS keychain");
     println!();
     println!("TabbyWebRTC agent is not paired.");
-    println!("Open this URL on a signed-in device to pair:");
-    println!("  {pairing_url}");
+    println!("Scan this QR payload with the TabbyWebRTC mobile app (Pair a new machine):");
+    println!("{qr_json}");
     println!();
+    println!("Local pairing endpoint: {local_endpoint}/pair");
     println!("Waiting for pairing (local callback on port {})...", config.http.thumbnail_port);
 
     let (jwt_tx, jwt_rx) = oneshot::channel();
@@ -66,7 +106,8 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/pair", post(complete_pairing))
         .route("/pair/status", get(pairing_status))
-        .with_state(state);
+        .layer(CorsLayer::permissive())
+        .with_state(state.clone());
 
     let listener = tokio::net::TcpListener::bind(&bind)
         .await
@@ -78,16 +119,55 @@ pub async fn run_pairing_flow(config: &AgentConfig) -> anyhow::Result<()> {
         }
     });
 
+    let poll_state = state.clone();
+    let api_url = config.signaling.api_url.clone();
+    let agent_id = config.agent.id.clone();
+    let poll_task = tokio::spawn(async move {
+        if api_url.trim().is_empty() {
+            return;
+        }
+        let claim_url = format!(
+            "{}/agents/pair-claim?agentId={}&nonce={}",
+            api_url.trim_end_matches('/'),
+            agent_id,
+            pairing_nonce
+        );
+        loop {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            match reqwest::get(&claim_url).await {
+                Ok(response) if response.status().is_success() => {
+                    if let Ok(body) = response.json::<PairClaimResponse>().await {
+                        if !body.agent_jwt.is_empty() {
+                            let mut slot = poll_state.jwt_tx.write().await;
+                            if let Some(tx) = slot.take() {
+                                let _ = tx.send(body.agent_jwt);
+                            }
+                            return;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    });
+
     let token = tokio::time::timeout(Duration::from_secs(600), jwt_rx)
         .await
         .context("pairing timed out after 10 minutes")?
         .context("pairing channel closed")?;
 
+    poll_task.abort();
     server.abort();
 
     keychain::set_agent_jwt(&token)?;
     println!("Pairing complete. Restart the agent to connect.");
     Ok(())
+}
+
+#[derive(Deserialize)]
+struct PairClaimResponse {
+    #[serde(rename = "agentJwt")]
+    agent_jwt: String,
 }
 
 async fn complete_pairing(

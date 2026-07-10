@@ -38,30 +38,49 @@ export async function putConnection(
 
 export async function updateConnection(
   connectionId: string,
-  updates: Partial<Pick<ConnectionRecord, 'agentId' | 'userId' | 'token' | 'pendingSessionId'>>,
+  updates: {
+    [K in keyof Pick<ConnectionRecord, 'agentId' | 'userId' | 'token' | 'pendingSessionId'>]?:
+      | ConnectionRecord[K]
+      | null;
+  },
 ): Promise<void> {
   const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
   if (entries.length === 0) {
     return;
   }
 
-  const expressionParts: string[] = [];
+  const setParts: string[] = [];
+  const removeParts: string[] = [];
   const expressionNames: Record<string, string> = {};
   const expressionValues: Record<string, unknown> = {};
 
   for (const [key, value] of entries) {
-    expressionParts.push(`#${key} = :${key}`);
     expressionNames[`#${key}`] = key;
-    expressionValues[`:${key}`] = value;
+    if (value === null) {
+      removeParts.push(`#${key}`);
+    } else {
+      setParts.push(`#${key} = :${key}`);
+      expressionValues[`:${key}`] = value;
+    }
+  }
+
+  const expressionSections: string[] = [];
+  if (setParts.length > 0) {
+    expressionSections.push(`SET ${setParts.join(', ')}`);
+  }
+  if (removeParts.length > 0) {
+    expressionSections.push(`REMOVE ${removeParts.join(', ')}`);
   }
 
   await docClient.send(
     new UpdateCommand({
       TableName: connectionsTable(),
       Key: { connectionId },
-      UpdateExpression: `SET ${expressionParts.join(', ')}`,
+      UpdateExpression: expressionSections.join(' '),
       ExpressionAttributeNames: expressionNames,
-      ExpressionAttributeValues: expressionValues,
+      ...(Object.keys(expressionValues).length > 0
+        ? { ExpressionAttributeValues: expressionValues }
+        : {}),
     }),
   );
 }

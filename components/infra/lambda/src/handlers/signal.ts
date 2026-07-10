@@ -12,6 +12,7 @@ import type {
   SubscribeMessage,
   UnsubscribeMessage,
 } from '../types.js';
+import { getAgent } from '../lib/agents.js';
 import { findAgentConnectionId, findBrowserConnectionsByAgentId } from '../lib/connections.js';
 import { docClient } from '../lib/dynamodb.js';
 import { verifyTabbyWebRTCToken, type TabbyWebRTCTokenPayload } from '../lib/jwt.js';
@@ -129,7 +130,22 @@ export async function handleUnsubscribe(
   );
 }
 
-export async function handleSdpOffer(message: SdpOfferMessage): Promise<void> {
+export async function handleSdpOffer(
+  message: SdpOfferMessage,
+  connection: ConnectionRecord,
+): Promise<void> {
+  if (connection.clientType !== 'agent' || !connection.agentId) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  const lock = await getSourceLock(message.sourceId);
+  if (!lock || lock.agentId !== connection.agentId) {
+    throw new Error('UNAUTHORIZED');
+  }
+  if (lock.connectionId !== message.targetConnectionId) {
+    throw new Error('UNAUTHORIZED');
+  }
+
   await sendToConnection(message.targetConnectionId, {
     type: 'SDP_OFFER',
     sourceId: message.sourceId,
@@ -189,5 +205,31 @@ export async function handleIceCandidate(
     type: 'ICE_CANDIDATE',
     tabId: lock.tabId,
     candidate: message.candidate,
+  });
+}
+
+export async function handleRequestSources(
+  message: { type: 'REQUEST_SOURCES'; agentId: string },
+  connection: ConnectionRecord,
+): Promise<void> {
+  const payload = await requireValidSessionToken(connection);
+  if (payload.agentId !== message.agentId) {
+    throw new Error('UNAUTHORIZED');
+  }
+  if (connection.agentId && connection.agentId !== message.agentId) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  const agent = await getAgent(message.agentId);
+  if (!agent) {
+    throw new Error('AGENT_OFFLINE');
+  }
+
+  await sendToConnection(connection.connectionId, {
+    type: 'AGENT_SOURCES',
+    agentId: agent.agentId,
+    displays: agent.displays ?? [],
+    apps: agent.apps ?? [],
+    localEndpoint: agent.localEndpoint,
   });
 }

@@ -14,12 +14,24 @@ export class AgentWsHandlerService {
     private readonly connections: ConnectionsService,
   ) {}
 
+  private requireBoundAgentId(connection: ConnectionRecord, messageAgentId: string): string {
+    if (!connection.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
+    if (messageAgentId !== connection.agentId) {
+      throw new Error('AGENT_ID_MISMATCH');
+    }
+    return connection.agentId;
+  }
+
   async handleAgentRegister(
     message: AgentRegisterMessage,
     connection: ConnectionRecord,
   ): Promise<void> {
+    const agentId = this.requireBoundAgentId(connection, message.agentId);
+
     this.agents.upsertAgentRegistration({
-      agentId: message.agentId,
+      agentId,
       userId: connection.userId,
       connectionId: connection.connectionId,
       publicKey: message.publicKey,
@@ -28,16 +40,13 @@ export class AgentWsHandlerService {
       apps: message.apps ?? [],
       localEndpoint: message.localEndpoint,
     });
-
-    this.connections.updateConnection(connection.connectionId, {
-      agentId: message.agentId,
-    });
   }
 
   async handleAgentHeartbeat(
     message: AgentHeartbeatMessage,
     connection: ConnectionRecord,
   ): Promise<void> {
-    this.agents.touchAgentHeartbeat(message.agentId, connection.connectionId);
+    const agentId = this.requireBoundAgentId(connection, message.agentId);
+    this.agents.touchAgentHeartbeat(agentId, connection.connectionId);
   }
 }

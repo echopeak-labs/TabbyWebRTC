@@ -10,6 +10,8 @@ export interface PairQRPayload {
   publicKey: string
   platform?: 'windows' | 'macos' | 'linux'
   name?: string
+  localEndpoint?: string
+  pairingNonce?: string
 }
 
 export type QRPayload = SessionQRPayload | PairQRPayload
