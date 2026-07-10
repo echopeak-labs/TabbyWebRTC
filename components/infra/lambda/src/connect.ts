@@ -1,4 +1,5 @@
 import type { APIGatewayProxyResultV2, APIGatewayProxyWebsocketEventV2 } from 'aws-lambda';
+import { getAgent } from './lib/agents.js';
 import { putConnection, updateConnection } from './lib/connections.js';
 import { extractBearerToken, verifyAgentJwt } from './lib/jwt.js';
 import {
@@ -45,8 +46,13 @@ export async function onConnect(
 
     try {
       const payload = await verifyAgentJwt(agentToken);
+      const agentId = payload.sub!;
+      const agent = await getAgent(agentId);
+      if (!agent?.tokenJti || !payload.jti || agent.tokenJti !== payload.jti) {
+        return { statusCode: 401, body: 'Agent token revoked' };
+      }
       await putConnection(connectionId, clientType, {
-        agentId: payload.sub,
+        agentId,
         userId: payload.userId,
       });
       return { statusCode: 200, body: 'Connected' };

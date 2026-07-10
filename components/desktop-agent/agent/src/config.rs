@@ -10,6 +10,10 @@ pub struct AgentConfig {
     pub signaling: SignalingSection,
     pub capture: CaptureSection,
     pub http: HttpSection,
+    #[serde(default)]
+    pub input: InputSection,
+    #[serde(default)]
+    pub updates: UpdatesSection,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +42,57 @@ pub struct HttpSection {
     pub bind: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InputSection {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub allow_remote_power: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdatesSection {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default = "default_update_base_url")]
+    pub base_url: String,
+    #[serde(default = "default_update_channel")]
+    pub channel: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_update_base_url() -> String {
+    option_env!("TABBYWEBRTC_UPDATE_BASE_URL")
+        .unwrap_or("https://REPLACE_DEV_REST_URL/")
+        .to_string()
+}
+
+fn default_update_channel() -> String {
+    "dev".into()
+}
+
+impl Default for InputSection {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            allow_remote_power: false,
+        }
+    }
+}
+
+impl Default for UpdatesSection {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            base_url: default_update_base_url(),
+            channel: default_update_channel(),
+        }
+    }
+}
+
 impl Default for AgentConfig {
     fn default() -> Self {
         Self {
@@ -56,8 +111,10 @@ impl Default for AgentConfig {
             },
             http: HttpSection {
                 thumbnail_port: 7700,
-                bind: "0.0.0.0".into(),
+                bind: "127.0.0.1".into(),
             },
+            input: InputSection::default(),
+            updates: UpdatesSection::default(),
         }
     }
 }

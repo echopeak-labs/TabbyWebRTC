@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { clearSessionStorage } from '@/lib/auth-sync'
+import { apiFetch } from '@/lib/api-fetch'
 import { useAuthStore } from '@/stores/authStore'
 import { useStreamStore } from '@/stores/streamStore'
 import { useConnectionStats, type ConnectionPath } from '@/components/layout/useConnectionStats'
@@ -67,9 +68,13 @@ export function TopBar({ peerConnection = null, onAgentSwitch }: TopBarProps) {
     let cancelled = false
     void (async () => {
       try {
-        const response = await fetch(`${REST_URL}/agents`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await apiFetch(
+          `${REST_URL}/agents`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+          { navigate },
+        )
         if (!response.ok || cancelled) {
           return
         }

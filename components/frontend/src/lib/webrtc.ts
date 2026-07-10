@@ -1,3 +1,5 @@
+import { apiFetch } from '@/lib/api-fetch'
+
 const STUN_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
@@ -27,7 +29,7 @@ export async function fetchTurnCredentials(token: string): Promise<TurnCredentia
   }
 
   const restUrl = import.meta.env.VITE_REST_URL
-  const response = await fetch(`${restUrl}/turn-credentials`, {
+  const response = await apiFetch(`${restUrl}/turn-credentials`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 

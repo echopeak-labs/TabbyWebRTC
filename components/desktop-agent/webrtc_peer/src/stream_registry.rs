@@ -113,6 +113,10 @@ impl StreamRegistry {
             .map(|s| s.subscriber_count)
             .unwrap_or(0)
     }
+
+    pub fn total_subscribers(&self) -> usize {
+        self.streams.values().map(|s| s.subscriber_count).sum()
+    }
 }
 
 #[cfg(test)]

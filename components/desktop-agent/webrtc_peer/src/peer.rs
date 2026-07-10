@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use capture::{create_capturable, CaptureConfig};
-use input::{create_injector, run_input_handler};
+use input::{create_injector, run_input_handler, InputPolicy};
 use signaling::{InboundMessage, OutboundMessage, SignalingClient};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
@@ -21,11 +21,13 @@ use crate::stream_registry::StreamRegistry;
 pub struct PeerCoordinatorConfig {
     pub capture: CaptureConfig,
     pub turn: Option<TurnConfig>,
+    pub input_policy: InputPolicy,
 }
 
 pub struct PeerCoordinator {
     api: API,
     rtc_turn: Option<TurnConfig>,
+    input_policy: InputPolicy,
     registry: Arc<Mutex<StreamRegistry>>,
     peer_connections: Arc<Mutex<HashMap<String, Arc<RTCPeerConnection>>>>,
     tab_sources: Arc<Mutex<HashMap<String, String>>>,
@@ -37,10 +39,15 @@ impl PeerCoordinator {
         Ok(Arc::new(Self {
             api,
             rtc_turn: config.turn,
+            input_policy: config.input_policy,
             registry: Arc::new(Mutex::new(StreamRegistry::new(config.capture))),
             peer_connections: Arc::new(Mutex::new(HashMap::new())),
             tab_sources: Arc::new(Mutex::new(HashMap::new())),
         }))
+    }
+
+    pub fn registry(&self) -> Arc<Mutex<StreamRegistry>> {
+        self.registry.clone()
     }
 
     pub async fn run_inbound_loop(
@@ -128,7 +135,7 @@ impl PeerCoordinator {
             .context("create_data_channel failed")?;
 
         let injector = Arc::new(Mutex::new(create_injector()?));
-        run_input_handler(data_channel, injector).await;
+        run_input_handler(data_channel, injector, self.input_policy).await;
 
         let offer = pc.create_offer(None).await.context("create_offer failed")?;
         let offer_sdp = offer.sdp.clone();

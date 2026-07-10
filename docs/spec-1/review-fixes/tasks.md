@@ -39,8 +39,8 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 - [x] Types aligned in `signaling.ts`
 
 ### FE-03 401 / session clear
-- [ ] Central REST helper clears sessionStorage + authStore + redirect `/` on 401
-- [ ] WS auth failures use same clear path
+- [x] Central REST helper clears sessionStorage + authStore + redirect `/` on 401
+- [x] WS auth failures use same clear path
 - [ ] Manual verify with expired token
 
 ### INF-03 Pending session expiry
@@ -49,30 +49,30 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 - [x] Parity with testServer
 
 ### INF-04 Agent JWT revocation
-- [ ] Persist `jti` or token version on agent record at pair
-- [ ] Validate on agent `$connect`
-- [ ] `POST /agents/{id}/revoke` (Clerk) invalidates and disconnects
+- [x] Persist `jti` or token version on agent record at pair
+- [x] Validate on agent `$connect`
+- [x] `POST /agents/{id}/revoke` (Clerk) invalidates and disconnects
 
 ### INF-05 CORS + rate limits
-- [ ] Restrict REST CORS to web app origins
-- [ ] Add API Gateway throttling in CDK
-- [ ] Verify via `cdk synth`
+- [x] Restrict REST CORS to web app origins
+- [x] Add API Gateway throttling in CDK
+- [x] Verify via `cdk synth`
 
 ### DA-02 Local HTTP auth
 - [x] Require HMAC `local_token` on `/sources`, `/thumbnail/:id`, `/signal`
 - [x] Frontend LAN probe passes token from `/info`
-- [ ] Default bind `127.0.0.1` or document LAN opt-in
+- [x] Default bind `127.0.0.1` or document LAN opt-in
 - [x] Unauthenticated `/sources` → 401
 
 ### DA-03 Input / power consent
-- [ ] Default-deny or confirm remote `SHUTDOWN` / `RESTART`
-- [ ] Config or local toggle for input enable
-- [ ] Document agent trust model
+- [x] Default-deny or confirm remote `SHUTDOWN` / `RESTART`
+- [x] Config or local toggle for input enable
+- [x] Document agent trust model
 
 ### DA-04 Auto-update client
-- [ ] Implement tasks under `desktop-agent/05-auto-update.md` / `tasks.md` section
-- [ ] SHA-256 verify before install
-- [ ] Idle-gate while peers active
+- [x] Implement tasks under `desktop-agent/05-auto-update.md` / `tasks.md` section
+- [x] SHA-256 verify before install
+- [x] Idle-gate while peers active
 
 ---
 

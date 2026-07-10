@@ -11,7 +11,7 @@ mod windows;
 
 use serde::{Deserialize, Serialize};
 
-pub use handler::run_input_handler;
+pub use handler::{run_input_handler, InputPolicy};
 pub use payload::InputPayload;
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]

@@ -49,6 +49,13 @@ export class SignalClient {
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data as string) as DesktopInboundMessage
+        if (
+          message.type === 'ERROR' &&
+          'code' in message &&
+          (message.code === 'UNAUTHORIZED' || message.code === 'INVALID_TOKEN')
+        ) {
+          import('@/lib/api-fetch').then(({ forceSessionExpiry }) => forceSessionExpiry())
+        }
         this.listeners.forEach((listener) => listener(message))
       } catch {
         return

@@ -50,8 +50,14 @@ export class WsConnectService {
 
       try {
         const payload = await verifyAgentJwt(agentToken);
+        const agentId = payload.sub!;
+        const agent = this.agents.getAgent(agentId);
+        if (!agent?.tokenJti || !payload.jti || agent.tokenJti !== payload.jti) {
+          client.close(1008, 'Agent token revoked');
+          return { connectionId, ok: false, statusCode: 401, message: 'Agent token revoked' };
+        }
         this.connections.putConnection(connectionId, clientType, {
-          agentId: payload.sub,
+          agentId,
           userId: payload.userId,
         });
         return { connectionId, ok: true };

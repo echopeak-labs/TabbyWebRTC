@@ -26,6 +26,15 @@ export class MessageSenderService {
     socket.send(JSON.stringify(payload));
   }
 
+  forceDisconnect(connectionId: string): void {
+    const socket = this.sockets.get(connectionId);
+    this.sockets.delete(connectionId);
+    if (socket && socket.readyState === socket.OPEN) {
+      socket.close(1008, 'Agent token revoked');
+    }
+    this.connections.delete(connectionId);
+  }
+
   clear(): void {
     this.sockets.clear();
   }

@@ -110,6 +110,7 @@ describe('auth and signaling integration', () => {
         name: 'Test Agent',
         pairingToken: 'pending-agent-jwt',
         pairingNonce: 'test-nonce',
+        tokenJti: 'test-jti',
       });
 
       const browserWs = new WebSocket(`ws://127.0.0.1:${port}?clientType=browser`);
@@ -132,6 +133,18 @@ describe('auth and signaling integration', () => {
       await browserMessages.waitFor('AUTH_APPROVED');
 
       const agentJwt = await issueAgentJwt('agent-1', 'user-1');
+      const decoded = jose.decodeJwt(agentJwt);
+      agents.pairAgent({
+        agentId: 'agent-1',
+        userId: 'user-1',
+        publicKey: 'pk',
+        platform: 'linux',
+        name: 'Test Agent',
+        pairingToken: agentJwt,
+        pairingNonce: 'test-nonce',
+        tokenJti: typeof decoded.jti === 'string' ? decoded.jti : 'test-jti',
+      });
+
       const agentWs = new WebSocket(
         `ws://127.0.0.1:${port}?clientType=agent&agentId=agent-1&token=${agentJwt}`,
       );

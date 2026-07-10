@@ -1,5 +1,6 @@
 import {
   ApiGatewayManagementApiClient,
+  DeleteConnectionCommand,
   GoneException,
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
@@ -38,6 +39,22 @@ export async function sendToConnection(
           Key: { connectionId },
         }),
       );
+      return;
+    }
+    throw error;
+  }
+}
+
+export async function forceDisconnect(connectionId: string): Promise<void> {
+  const client = getManagementClient();
+  try {
+    await client.send(
+      new DeleteConnectionCommand({
+        ConnectionId: connectionId,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof GoneException || (error as { name?: string }).name === 'GoneException') {
       return;
     }
     throw error;

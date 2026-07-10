@@ -4,10 +4,12 @@ import {
   Get,
   Headers,
   HttpException,
+  Param,
   Post,
   Query,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import * as jose from 'jose';
 import {
   extractBearerToken,
   issueAgentJwt,
@@ -15,10 +17,16 @@ import {
   verifyTabbyWebRTCToken,
 } from '../shared/jwt';
 import { AgentsService } from '../shared/agents.service';
+import { ConnectionsService } from '../shared/connections.service';
+import { MessageSenderService } from '../shared/message-sender.service';
 
 @Controller('agents')
 export class AgentsController {
-  constructor(private readonly agents: AgentsService) {}
+  constructor(
+    private readonly agents: AgentsService,
+    private readonly connections: ConnectionsService,
+    private readonly messageSender: MessageSenderService,
+  ) {}
 
   @Get()
   async listAgents(@Headers('authorization') authorization: string | undefined) {
@@ -93,6 +101,8 @@ export class AgentsController {
       }
 
       const agentJwt = await issueAgentJwt(body.agentId, userId);
+      const decoded = jose.decodeJwt(agentJwt);
+      const tokenJti = typeof decoded.jti === 'string' ? decoded.jti : randomUUID();
       const pairingNonce = body.pairingNonce || randomUUID();
 
       await this.agents.pairAgent({
@@ -103,6 +113,7 @@ export class AgentsController {
         name: body.name,
         pairingToken: agentJwt,
         pairingNonce,
+        tokenJti,
       });
 
       return { agentJwt, pairingNonce };
@@ -111,6 +122,39 @@ export class AgentsController {
         throw error;
       }
       const message = error instanceof Error ? error.message : 'Pairing failed';
+      if (message === 'INVALID_CLERK_JWT') {
+        throw new HttpException({ error: 'Invalid Clerk token' }, 401);
+      }
+      throw new HttpException({ error: message }, 500);
+    }
+  }
+
+  @Post(':agentId/revoke')
+  async revokeAgent(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('agentId') agentId: string,
+  ) {
+    const clerkToken = extractBearerToken(authorization);
+    if (!clerkToken) {
+      throw new HttpException({ error: 'Missing authorization' }, 401);
+    }
+    try {
+      const { userId } = await verifyClerkJwt(clerkToken);
+      const agent = this.agents.getAgent(agentId);
+      if (!agent || agent.userId !== userId) {
+        throw new HttpException({ error: 'Agent not found or not owned by user' }, 403);
+      }
+      const connectionId = this.connections.findAgentConnectionId(agentId);
+      this.agents.revokeAgentToken(agentId);
+      if (connectionId) {
+        this.messageSender.forceDisconnect(connectionId);
+      }
+      return { ok: true, agentId };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : 'Revoke failed';
       if (message === 'INVALID_CLERK_JWT') {
         throw new HttpException({ error: 'Invalid Clerk token' }, 401);
       }

@@ -37,6 +37,7 @@ export async function pairAgent(input: {
   name: string;
   pairingToken: string;
   pairingNonce: string;
+  tokenJti: string;
 }): Promise<AgentRecord> {
   const now = Date.now();
   const item: AgentRecord = {
@@ -53,6 +54,7 @@ export async function pairAgent(input: {
     pairingToken: input.pairingToken,
     pairingNonce: input.pairingNonce,
     pairingExpiresAt: Math.floor(now / 1000) + 600,
+    tokenJti: input.tokenJti,
   };
   await docClient.send(
     new PutCommand({
@@ -61,6 +63,25 @@ export async function pairAgent(input: {
     }),
   );
   return item;
+}
+
+export async function revokeAgentToken(agentId: string): Promise<AgentRecord | undefined> {
+  const agent = await getAgent(agentId);
+  if (!agent) {
+    return undefined;
+  }
+  await docClient.send(
+    new UpdateCommand({
+      TableName: agentsTable(),
+      Key: { agentId },
+      UpdateExpression: 'REMOVE tokenJti SET online = :online, lastSeen = :lastSeen',
+      ExpressionAttributeValues: {
+        ':online': false,
+        ':lastSeen': Date.now(),
+      },
+    }),
+  );
+  return { ...agent, tokenJti: undefined, online: false };
 }
 
 export async function consumePairingClaim(

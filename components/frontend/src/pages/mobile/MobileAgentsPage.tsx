@@ -1,10 +1,12 @@
-import { useClerk } from '@clerk/clerk-react'
+import { useAuth, useClerk } from '@clerk/clerk-react'
 import { Monitor, Plus } from 'lucide-react'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { getPairedAgentsFromUser } from '@/lib/clerk-client'
+import { getPairedAgentsFromUser, removePairedAgent } from '@/lib/clerk-client'
 import { useMobileStore } from '@/stores/mobileStore'
+
+const REST_URL = import.meta.env.VITE_REST_URL
 
 function platformLabel(platform: string): string {
   switch (platform) {
@@ -30,9 +32,12 @@ function isAgentOnline(lastSeen: string): boolean {
 export function MobileAgentsPage() {
   const navigate = useNavigate()
   const { signOut, user } = useClerk()
+  const { getToken } = useAuth()
   const pairedAgents = useMobileStore((s) => s.pairedAgents)
   const setPairedAgents = useMobileStore((s) => s.setPairedAgents)
   const setClerkUserId = useMobileStore((s) => s.setClerkUserId)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -44,6 +49,37 @@ export function MobileAgentsPage() {
       setPairedAgents(agents)
     }
   }, [user, setClerkUserId, setPairedAgents])
+
+  const handleRevoke = useCallback(
+    async (agentId: string) => {
+      if (!user) {
+        return
+      }
+      setRevokingId(agentId)
+      setError(null)
+      try {
+        const clerkJwt = await getToken()
+        if (!clerkJwt) {
+          throw new Error('Not authenticated')
+        }
+        const response = await fetch(`${REST_URL}/agents/${encodeURIComponent(agentId)}/revoke`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${clerkJwt}` },
+        })
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string }
+          throw new Error(body.error ?? 'Revoke failed')
+        }
+        const updated = await removePairedAgent(user, agentId)
+        setPairedAgents(updated)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Revoke failed')
+      } finally {
+        setRevokingId(null)
+      }
+    },
+    [getToken, setPairedAgents, user],
+  )
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -60,6 +96,8 @@ export function MobileAgentsPage() {
 
       <div className="flex-1 overflow-y-auto p-4">
         <h2 className="mb-4 text-base font-medium text-textPrimary">Your Machines</h2>
+
+        {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
         {pairedAgents.length === 0 ? (
           <p className="text-sm text-textMuted">No paired machines yet.</p>
@@ -84,6 +122,14 @@ export function MobileAgentsPage() {
                     </div>
                     <p className="text-sm text-textMuted">{platformLabel(agent.platform)}</p>
                   </div>
+                  <Button
+                    variant="ghost"
+                    className="min-h-11 shrink-0 text-destructive"
+                    disabled={revokingId === agent.agentId}
+                    onClick={() => void handleRevoke(agent.agentId)}
+                  >
+                    {revokingId === agent.agentId ? 'Revoking…' : 'Revoke'}
+                  </Button>
                 </li>
               )
             })}

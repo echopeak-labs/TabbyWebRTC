@@ -30,6 +30,7 @@ export class AgentsService {
     name: string;
     pairingToken: string;
     pairingNonce: string;
+    tokenJti: string;
   }): AgentRecord {
     const now = Date.now();
     const item: AgentRecord = {
@@ -46,9 +47,20 @@ export class AgentsService {
       pairingToken: input.pairingToken,
       pairingNonce: input.pairingNonce,
       pairingExpiresAt: Math.floor(now / 1000) + 600,
+      tokenJti: input.tokenJti,
     };
     this.store.set(input.agentId, item);
     return item;
+  }
+
+  revokeAgentToken(agentId: string): AgentRecord | undefined {
+    const agent = this.store.get(agentId);
+    if (!agent) {
+      return undefined;
+    }
+    const updated = { ...agent, tokenJti: undefined, online: false, lastSeen: Date.now() };
+    this.store.set(agentId, updated);
+    return updated;
   }
 
   consumePairingClaim(agentId: string, nonce: string): string | undefined {

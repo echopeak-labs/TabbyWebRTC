@@ -1,7 +1,6 @@
 import { CfnOutput, Stack, StackProps, Tags } from 'aws-cdk-lib';
 import {
   AuthorizationType,
-  Cors,
   LambdaIntegration,
   RestApi,
 } from 'aws-cdk-lib/aws-apigateway';
@@ -11,6 +10,7 @@ import { FrontendHosting } from './constructs/frontend-hosting';
 import { IamRoles } from './constructs/iam-roles';
 import { LambdaFunctions } from './constructs/lambda-functions';
 import { WebSocketApiConstruct } from './constructs/websocket-api';
+import { webDomain } from './domain-params';
 
 export interface TabbyWebRtcStackProps extends StackProps {
   envName: 'dev' | 'prod';
@@ -40,12 +40,17 @@ export class TabbyWebRtcStack extends Stack {
       envName: props.envName,
     });
 
+    const allowedOrigin = `https://${webDomain(props.envName)}`;
     const restApi = new RestApi(this, 'RestApi', {
       restApiName: `tabbywebrtc-rest-${props.envName}`,
       defaultCorsPreflightOptions: {
-        allowOrigins: Cors.ALL_ORIGINS,
+        allowOrigins: [allowedOrigin],
         allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Authorization', 'Content-Type'],
+      },
+      deployOptions: {
+        throttlingRateLimit: 50,
+        throttlingBurstLimit: 100,
       },
     });
 
@@ -66,6 +71,12 @@ export class TabbyWebRtcStack extends Stack {
 
     const pairClaimResource = agentsResource.addResource('pair-claim');
     pairClaimResource.addMethod('GET', new LambdaIntegration(lambdas.agentFn), {
+      authorizationType: AuthorizationType.NONE,
+    });
+
+    const agentIdResource = agentsResource.addResource('{agentId}');
+    const revokeResource = agentIdResource.addResource('revoke');
+    revokeResource.addMethod('POST', new LambdaIntegration(lambdas.agentFn), {
       authorizationType: AuthorizationType.NONE,
     });
 
@@ -98,6 +109,9 @@ export class TabbyWebRtcStack extends Stack {
     new CfnOutput(this, 'FrontendDistributionId', {
       value: frontend.distribution.distributionId,
     });
+    new CfnOutput(this, 'CorsAllowOrigin', { value: allowedOrigin });
+    new CfnOutput(this, 'RestThrottleRateLimit', { value: '50' });
+    new CfnOutput(this, 'RestThrottleBurstLimit', { value: '100' });
     new CfnOutput(this, 'FrontendDistributionDomain', {
       value: frontend.distribution.distributionDomainName,
     });

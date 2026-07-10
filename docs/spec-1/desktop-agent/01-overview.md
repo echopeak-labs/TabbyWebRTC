@@ -118,10 +118,26 @@ hide_cursor = true         # Hide OS cursor from capture stream
 
 [http]
 thumbnail_port = 7700
-bind = "0.0.0.0"
+bind = "127.0.0.1"         # LAN opt-in: set "0.0.0.0" for network access
+
+[input]
+enabled = true             # false blocks all remote keyboard/mouse/clipboard/commands
+allow_remote_power = false # SHUTDOWN/RESTART require explicit local allow
+
+[updates]
+enabled = true
+base_url = "https://api.tabbywebrtc.com/prod"
+channel = "dev"
 ```
 
 Config is loaded at startup. If the config file does not exist, defaults are used and the file is created.
+
+### Trust model
+
+- Signaling authorization is necessary but not sufficient for destructive control: remote `SHUTDOWN` / `RESTART` are denied unless `input.allow_remote_power = true`.
+- All remote input can be disabled with `input.enabled = false`.
+- Local HTTP defaults to loopback (`127.0.0.1`); authenticated routes still require the HMAC `local_token` from `/info`.
+- Agent JWT possession (keychain) plus live signaling registration is the WAN trust boundary until DA-05 session crypto lands.
 
 ---
 
@@ -131,7 +147,7 @@ Config is loaded at startup. If the config file does not exist, defaults are use
 2. Load config from TOML file.
 3. Load agent JWT from OS keychain. If not found → print pairing instructions and exit.
 4. Enumerate displays and application windows.
-5. Start `LocalServer` on `0.0.0.0:7700`:
+5. Start `LocalServer` on configured bind (default `127.0.0.1:7700`):
    - `GET /info` → agent metadata + short-lived local HMAC token
    - `GET /sources` → display + app list
    - `GET /thumbnail/<sourceId>` → JPEG thumbnail

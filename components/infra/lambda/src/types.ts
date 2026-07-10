@@ -34,6 +34,7 @@ export interface AgentRecord {
   pairingToken?: string;
   pairingNonce?: string;
   pairingExpiresAt?: number;
+  tokenJti?: string;
 }
 
 export interface SourceLockRecord {

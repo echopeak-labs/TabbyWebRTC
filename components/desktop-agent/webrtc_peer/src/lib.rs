@@ -13,7 +13,14 @@ pub fn version() -> &'static str {
 use std::sync::Arc;
 
 use capture::CaptureConfig;
+use input::InputPolicy;
 use signaling::{AgentRegistration, SignalingClient};
+use tokio::sync::Mutex;
+
+pub struct PeerStack {
+    pub signaling: Arc<SignalingClient>,
+    pub registry: Arc<Mutex<StreamRegistry>>,
+}
 
 pub async fn start_peer_stack(
     signaling_url: &str,
@@ -21,14 +28,22 @@ pub async fn start_peer_stack(
     registration: AgentRegistration,
     capture_config: CaptureConfig,
     turn: Option<TurnConfig>,
-) -> anyhow::Result<Arc<SignalingClient>> {
-    let coordinator =
-        PeerCoordinator::new(PeerCoordinatorConfig { capture: capture_config, turn })?;
+    input_policy: InputPolicy,
+) -> anyhow::Result<PeerStack> {
+    let coordinator = PeerCoordinator::new(PeerCoordinatorConfig {
+        capture: capture_config,
+        turn,
+        input_policy,
+    })?;
+    let registry = coordinator.registry();
     let (signaling, inbound_rx) =
         SignalingClient::connect_with_reconnect(signaling_url, jwt, registration).await?;
     let signaling = Arc::new(signaling);
 
     tokio::spawn(coordinator.run_inbound_loop(inbound_rx, signaling.clone()));
 
-    Ok(signaling)
+    Ok(PeerStack {
+        signaling,
+        registry,
+    })
 }

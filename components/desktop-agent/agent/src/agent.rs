@@ -3,6 +3,7 @@ use std::sync::{Arc, OnceLock};
 
 use anyhow::Context;
 use capture::CaptureConfig;
+use input::InputPolicy;
 use signaling::{run_heartbeat_loop, AgentRegistration, SignalingClient};
 use tracing::info;
 use webrtc_peer::start_peer_stack;
@@ -12,6 +13,7 @@ use crate::keychain;
 use crate::local_server;
 use crate::pairing;
 use crate::source_enumerator::SourceEnumerator;
+use crate::updater;
 
 pub struct Agent {
     config_path: PathBuf,
@@ -67,16 +69,31 @@ impl Agent {
             hide_cursor: self.config.capture.hide_cursor,
         };
 
-        let signaling = start_peer_stack(
+        let input_policy = InputPolicy {
+            enabled: self.config.input.enabled,
+            allow_remote_power: self.config.input.allow_remote_power,
+        };
+
+        let peer_stack = start_peer_stack(
             &self.config.signaling.url,
             &jwt,
             registration,
             capture_config,
             None,
+            input_policy,
         )
         .await
         .context("peer stack failed")?;
+        let signaling = peer_stack.signaling.clone();
         let _ = SIGNALING_CLIENT.set(signaling.clone());
+
+        let registry = peer_stack.registry.clone();
+        let idle_check: Arc<dyn Fn() -> bool + Send + Sync> = Arc::new(move || {
+            registry
+                .try_lock()
+                .map(|guard| guard.total_subscribers() == 0)
+                .unwrap_or(false)
+        });
 
         tokio::spawn(async move {
             let mut rx = source_updates.subscribe();
@@ -88,14 +105,15 @@ impl Agent {
                             *guard = updated.clone();
                         }
                         if let Some(signaling) = SIGNALING_CLIENT.get() {
-                            if let Err(err) = signaling.send_agent_register(
-                                &signaling_agent_id,
-                                &signaling_public_key,
-                                input::platform_name(),
-                                &updated,
-                                &local_endpoint_for_updates,
-                            )
-                            .await
+                            if let Err(err) = signaling
+                                .send_agent_register(
+                                    &signaling_agent_id,
+                                    &signaling_public_key,
+                                    input::platform_name(),
+                                    &updated,
+                                    &local_endpoint_for_updates,
+                                )
+                                .await
                             {
                                 tracing::warn!(%err, "failed to re-register after source change");
                             }
@@ -113,9 +131,16 @@ impl Agent {
             run_heartbeat_loop(heartbeat_client, agent_id).await;
         });
 
+        let updates = self.config.updates.clone();
+        tokio::spawn(async move {
+            updater::run_update_loop(updates, idle_check).await;
+        });
+
         info!(
             agent_id = %self.config.agent.id,
             config = %self.config_path.display(),
+            input_enabled = self.config.input.enabled,
+            allow_remote_power = self.config.input.allow_remote_power,
             "agent running"
         );
 

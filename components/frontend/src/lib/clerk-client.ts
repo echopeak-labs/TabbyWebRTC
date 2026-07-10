@@ -46,3 +46,13 @@ export async function addPairedAgent(
   await savePairedAgentsToUser(user, updated)
   return updated
 }
+
+export async function removePairedAgent(
+  user: ClerkUser,
+  agentId: string,
+): Promise<PairedAgent[]> {
+  const existing = getPairedAgentsFromUser(user)
+  const updated = existing.filter((a) => a.agentId !== agentId)
+  await savePairedAgentsToUser(user, updated)
+  return updated
+}
