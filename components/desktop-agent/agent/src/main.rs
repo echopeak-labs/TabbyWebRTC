@@ -4,6 +4,7 @@ mod keychain;
 mod local_server;
 mod pairing;
 mod source_enumerator;
+mod turn;
 mod updater;
 
 use std::path::PathBuf;

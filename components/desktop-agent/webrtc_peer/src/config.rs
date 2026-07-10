@@ -9,7 +9,7 @@ use webrtc::rtp_transceiver::rtp_codec::{RTCRtpCodecCapability, RTCRtpCodecParam
 
 #[derive(Debug, Clone)]
 pub struct TurnConfig {
-    pub url: String,
+    pub urls: Vec<String>,
     pub username: String,
     pub credential: String,
 }
@@ -47,7 +47,7 @@ pub fn rtc_configuration(turn: Option<&TurnConfig>) -> RTCConfiguration {
 
     if let Some(turn) = turn {
         ice_servers.push(RTCIceServer {
-            urls: vec![format!("turn:{}", turn.url)],
+            urls: turn.urls.clone(),
             username: turn.username.clone(),
             credential: turn.credential.clone(),
             ..Default::default()

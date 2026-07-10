@@ -31,7 +31,9 @@ export class ConnectionsService {
 
   updateConnection(
     connectionId: string,
-    updates: Partial<Pick<ConnectionRecord, 'agentId' | 'userId' | 'token' | 'pendingSessionId'>>,
+    updates: Partial<
+      Pick<ConnectionRecord, 'agentId' | 'userId' | 'token' | 'pendingSessionId' | 'encryptedSalt'>
+    >,
   ): void {
     const existing = this.store.get(connectionId);
     if (!existing) {

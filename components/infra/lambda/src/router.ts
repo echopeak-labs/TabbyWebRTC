@@ -156,6 +156,9 @@ export async function onDefault(
 export const handler = async (
   event: APIGatewayProxyWebsocketEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
+  const { ensureSecretsLoaded } = await import('./lib/secrets.js');
+  await ensureSecretsLoaded();
+
   const routeKey = event.requestContext.routeKey;
 
   switch (routeKey) {

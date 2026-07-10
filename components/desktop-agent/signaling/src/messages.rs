@@ -4,19 +4,25 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum InboundMessage {
+    #[serde(rename_all = "camelCase")]
     NotifySubscriber {
         source_id: String,
         browser_connection_id: String,
         tab_id: String,
+        #[serde(default)]
+        encrypted_salt: Option<String>,
     },
+    #[serde(rename_all = "camelCase")]
     SdpAnswer {
         tab_id: String,
         sdp: String,
     },
+    #[serde(rename_all = "camelCase")]
     IceCandidate {
         tab_id: String,
         candidate: serde_json::Value,
     },
+    #[serde(rename_all = "camelCase")]
     NotifyUnsubscribe {
         tab_id: String,
         source_id: String,
@@ -26,6 +32,7 @@ pub enum InboundMessage {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OutboundMessage {
+    #[serde(rename_all = "camelCase")]
     AgentRegister {
         agent_id: String,
         public_key: String,
@@ -34,14 +41,17 @@ pub enum OutboundMessage {
         apps: Vec<SourcePayload>,
         local_endpoint: String,
     },
+    #[serde(rename_all = "camelCase")]
     AgentHeartbeat {
         agent_id: String,
     },
+    #[serde(rename_all = "camelCase")]
     SdpOffer {
         source_id: String,
         sdp: String,
         target_connection_id: String,
     },
+    #[serde(rename_all = "camelCase")]
     IceCandidate {
         source_id: String,
         candidate: serde_json::Value,

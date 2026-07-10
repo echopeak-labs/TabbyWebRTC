@@ -25,10 +25,15 @@ function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
   };
 }
 
+function requireEncryptedSalt(): boolean {
+  return process.env.REQUIRE_ENCRYPTED_SALT === 'true';
+}
+
 export async function handleAuthApprove(
   clerkToken: string,
   pendingSessionId: string,
   agentId: string,
+  encryptedSalt?: string,
 ): Promise<APIGatewayProxyResult> {
   const { userId } = await verifyClerkJwt(clerkToken);
   const session = await getPendingSession(pendingSessionId);
@@ -41,18 +46,24 @@ export async function handleAuthApprove(
     return jsonResponse(403, { error: 'Agent not found or not owned by user' });
   }
 
+  if (requireEncryptedSalt() && (!encryptedSalt || encryptedSalt.length < 16)) {
+    return jsonResponse(400, { error: 'encryptedSalt required' });
+  }
+
   await deletePendingSession(pendingSessionId);
   const token = await issueTabbyWebRTCToken(userId, agentId);
   await updateConnection(session.connectionId, {
     token,
     userId,
     agentId,
+    ...(encryptedSalt ? { encryptedSalt } : {}),
   });
 
   await sendToConnection(session.connectionId, {
     type: 'AUTH_APPROVED',
     token,
     agentId,
+    ...(encryptedSalt ? { encryptedSalt } : {}),
   });
 
   return jsonResponse(200, { ok: true });
@@ -99,6 +110,9 @@ export async function handleBindSession(
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const { ensureSecretsLoaded } = await import('../lib/secrets.js');
+  await ensureSecretsLoaded();
+
   const clerkToken = extractBearerToken(
     event.headers?.Authorization ?? event.headers?.authorization,
   );
@@ -106,9 +120,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return jsonResponse(401, { error: 'Missing authorization' });
   }
 
-  let body: { pendingSessionId?: string; agentId?: string };
+  let body: { pendingSessionId?: string; agentId?: string; encryptedSalt?: string };
   try {
-    body = JSON.parse(event.body ?? '{}') as { pendingSessionId?: string; agentId?: string };
+    body = JSON.parse(event.body ?? '{}') as {
+      pendingSessionId?: string;
+      agentId?: string;
+      encryptedSalt?: string;
+    };
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON body' });
   }
@@ -118,7 +136,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   try {
-    return await handleAuthApprove(clerkToken, body.pendingSessionId, body.agentId);
+    return await handleAuthApprove(
+      clerkToken,
+      body.pendingSessionId,
+      body.agentId,
+      body.encryptedSalt,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Authorization failed';
     if (message === 'INVALID_CLERK_JWT') {

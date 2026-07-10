@@ -2,8 +2,10 @@ import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import {
   extractBearerToken,
   generateTurnCredential,
+  verifyAgentJwt,
   verifyTabbyWebRTCToken,
 } from '../lib/jwt.js';
+import { getSecret } from '../lib/secrets.js';
 
 const TURN_CREDENTIAL_TTL_SECONDS = 86400;
 
@@ -15,7 +17,19 @@ function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
   };
 }
 
+async function verifyBrowserOrAgentToken(token: string): Promise<void> {
+  try {
+    await verifyTabbyWebRTCToken(token);
+    return;
+  } catch {
+  }
+  await verifyAgentJwt(token);
+}
+
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const { ensureSecretsLoaded } = await import('../lib/secrets.js');
+  await ensureSecretsLoaded();
+
   const token = extractBearerToken(
     event.headers?.Authorization ?? event.headers?.authorization,
   );
@@ -24,13 +38,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   try {
-    await verifyTabbyWebRTCToken(token);
+    await verifyBrowserOrAgentToken(token);
   } catch {
     return jsonResponse(401, { error: 'Invalid token' });
   }
 
-  const turnSecret = process.env.TURN_SECRET;
-  const turnUrls = process.env.TURN_URLS;
+  const turnSecret = await getSecret('TURN_SECRET');
+  const turnUrls = await getSecret('TURN_URLS');
   if (!turnSecret || !turnUrls) {
     return jsonResponse(500, { error: 'TURN not configured' });
   }

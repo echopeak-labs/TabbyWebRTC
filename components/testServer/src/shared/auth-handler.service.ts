@@ -22,10 +22,15 @@ export class AuthHandlerService {
     private readonly messageSender: MessageSenderService,
   ) {}
 
+  private requireEncryptedSalt(): boolean {
+    return process.env.REQUIRE_ENCRYPTED_SALT === 'true';
+  }
+
   async handleAuthApprove(
     clerkToken: string,
     pendingSessionId: string,
     agentId: string,
+    encryptedSalt?: string,
   ): Promise<{ status: number; body: object }> {
     const { userId } = await verifyClerkJwt(clerkToken);
     const session = this.pendingSessions.getPendingSession(pendingSessionId);
@@ -38,18 +43,24 @@ export class AuthHandlerService {
       return { status: 403, body: { error: 'Agent not found or not owned by user' } };
     }
 
+    if (this.requireEncryptedSalt() && (!encryptedSalt || encryptedSalt.length < 16)) {
+      return { status: 400, body: { error: 'encryptedSalt required' } };
+    }
+
     this.pendingSessions.deletePendingSession(pendingSessionId);
     const token = await issueTabbyWebRTCToken(userId, agentId);
     this.connections.updateConnection(session.connectionId, {
       token,
       userId,
       agentId,
+      ...(encryptedSalt ? { encryptedSalt } : {}),
     });
 
     await this.messageSender.sendToConnection(session.connectionId, {
       type: 'AUTH_APPROVED',
       token,
       agentId,
+      ...(encryptedSalt ? { encryptedSalt } : {}),
     });
 
     return { status: 200, body: { ok: true } };

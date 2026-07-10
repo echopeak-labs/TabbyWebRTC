@@ -78,6 +78,9 @@ export async function downloadArtifact(platform: string): Promise<APIGatewayProx
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const { ensureSecretsLoaded } = await import('../lib/secrets.js');
+  await ensureSecretsLoaded();
+
   if (event.httpMethod !== 'GET') {
     return notFound();
   }

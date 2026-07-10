@@ -9,7 +9,11 @@ export class AuthController {
   @Post('approve')
   async approve(
     @Headers('authorization') authorization: string | undefined,
-    @Body() body: { pendingSessionId?: string; agentId?: string },
+    @Body() body: {
+      pendingSessionId?: string;
+      agentId?: string;
+      encryptedSalt?: string;
+    },
   ) {
     const clerkToken = extractBearerToken(authorization);
     if (!clerkToken) {
@@ -28,6 +32,7 @@ export class AuthController {
         clerkToken,
         body.pendingSessionId,
         body.agentId,
+        body.encryptedSalt,
       );
       if (result.status !== 200) {
         throw new HttpException(result.body, result.status);

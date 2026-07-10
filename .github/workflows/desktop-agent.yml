@@ -98,7 +98,18 @@ jobs:
       - name: Install WiX Toolset (Windows)
         if: matrix.platform_key == 'windows-x86_64'
         run: choco install wixtoolset -y --no-progress
-      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Install Linux capture build deps
+        if: startsWith(matrix.platform_key, 'linux-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev pkg-config
+      - run: cargo build --release --features scap-capture,software-encode --target ${{ matrix.target }}
+      - name: Assert release capture feature
+        shell: bash
+        run: |
+          grep -q 'scap-capture' agent/Cargo.toml
+          grep -q 'scap-capture' capture/Cargo.toml
+          echo "hardware-encode deferred for release matrix; software-encode enabled"
       - name: Rename binary
         shell: bash
         run: |

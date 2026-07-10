@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { clearSessionStorage } from '@/lib/auth-sync'
-import { apiFetch } from '@/lib/api-fetch'
+import { apiFetch, forceSessionExpiry } from '@/lib/api-fetch'
 import { useAuthStore } from '@/stores/authStore'
 import { useStreamStore } from '@/stores/streamStore'
 import { useConnectionStats, type ConnectionPath } from '@/components/layout/useConnectionStats'
@@ -112,7 +112,7 @@ export function TopBar({ peerConnection = null, onAgentSwitch }: TopBarProps) {
       }
       Object.keys(activeStreams).forEach((sourceId) => releaseStream(sourceId))
       onAgentSwitch?.()
-      navigate('/')
+      forceSessionExpiry(navigate)
     },
     [activeStreams, agentId, navigate, onAgentSwitch, releaseStream],
   )

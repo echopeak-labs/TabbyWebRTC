@@ -22,12 +22,16 @@ pub struct PeerCoordinatorConfig {
     pub capture: CaptureConfig,
     pub turn: Option<TurnConfig>,
     pub input_policy: InputPolicy,
+    pub session_crypto_required: bool,
+    pub pairing_private_key_b64: Option<String>,
 }
 
 pub struct PeerCoordinator {
     api: API,
     rtc_turn: Option<TurnConfig>,
     input_policy: InputPolicy,
+    session_crypto_required: bool,
+    pairing_private_key_b64: Option<String>,
     registry: Arc<Mutex<StreamRegistry>>,
     peer_connections: Arc<Mutex<HashMap<String, Arc<RTCPeerConnection>>>>,
     tab_sources: Arc<Mutex<HashMap<String, String>>>,
@@ -40,6 +44,8 @@ impl PeerCoordinator {
             api,
             rtc_turn: config.turn,
             input_policy: config.input_policy,
+            session_crypto_required: config.session_crypto_required,
+            pairing_private_key_b64: config.pairing_private_key_b64,
             registry: Arc::new(Mutex::new(StreamRegistry::new(config.capture))),
             peer_connections: Arc::new(Mutex::new(HashMap::new())),
             tab_sources: Arc::new(Mutex::new(HashMap::new())),
@@ -72,9 +78,16 @@ impl PeerCoordinator {
                 source_id,
                 browser_connection_id,
                 tab_id,
+                encrypted_salt,
             } => {
-                self.handle_notify_subscriber(source_id, browser_connection_id, tab_id, signaling)
-                    .await
+                self.handle_notify_subscriber(
+                    source_id,
+                    browser_connection_id,
+                    tab_id,
+                    encrypted_salt,
+                    signaling,
+                )
+                .await
             }
             InboundMessage::SdpAnswer { tab_id, sdp } => self.handle_sdp_answer(&tab_id, &sdp).await,
             InboundMessage::IceCandidate { tab_id, candidate } => {
@@ -91,8 +104,19 @@ impl PeerCoordinator {
         source_id: String,
         browser_connection_id: String,
         tab_id: String,
+        encrypted_salt: Option<String>,
         signaling: Arc<SignalingClient>,
     ) -> anyhow::Result<()> {
+        if let Err(err) = crate::session_proof::verify_encrypted_salt(
+            encrypted_salt.as_deref(),
+            self.pairing_private_key_b64.as_deref(),
+            self.session_crypto_required,
+        ) {
+            if self.session_crypto_required {
+                return Err(err.context("session crypto proof failed"));
+            }
+            warn!(%err, "session salt verification skipped/failed");
+        }
         let track = {
             let mut registry = self.registry.lock().await;
             if registry.has_stream(&source_id) {

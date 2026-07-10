@@ -112,6 +112,7 @@ export class TabbyWebRtcStack extends Stack {
     new CfnOutput(this, 'CorsAllowOrigin', { value: allowedOrigin });
     new CfnOutput(this, 'RestThrottleRateLimit', { value: '50' });
     new CfnOutput(this, 'RestThrottleBurstLimit', { value: '100' });
+    new CfnOutput(this, 'AppSecretArn', { value: lambdas.appSecret.secretArn });
     new CfnOutput(this, 'FrontendDistributionDomain', {
       value: frontend.distribution.distributionDomainName,
     });

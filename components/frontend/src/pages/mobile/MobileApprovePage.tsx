@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import nacl from 'tweetnacl'
 import { decodeUTF8, encodeBase64 } from 'tweetnacl-util'
 import { Button } from '@/components/ui/button'
+import { ed25519PublicToX25519 } from '@/lib/ed2curve'
 import { useMobileStore } from '@/stores/mobileStore'
 import { isSessionQRPayload } from '@/types/auth'
 import type { PairedAgent } from '@/types/agent'
@@ -38,10 +39,13 @@ function decodePublicKey(publicKey: string): Uint8Array {
 }
 
 function encryptSalt(publicKey: string, salt: Uint8Array): string {
-  const recipientKey = decodePublicKey(publicKey)
+  const recipientKey = ed25519PublicToX25519(decodePublicKey(publicKey))
   const ephemeral = nacl.box.keyPair()
   const nonce = nacl.randomBytes(nacl.box.nonceLength)
   const encrypted = nacl.box(salt, nonce, recipientKey, ephemeral.secretKey)
+  if (!encrypted) {
+    throw new Error('Failed to encrypt session salt')
+  }
   const combined = new Uint8Array(
     ephemeral.publicKey.length + nonce.length + encrypted.length,
   )

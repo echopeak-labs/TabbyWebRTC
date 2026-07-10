@@ -136,8 +136,9 @@ Config is loaded at startup. If the config file does not exist, defaults are use
 
 - Signaling authorization is necessary but not sufficient for destructive control: remote `SHUTDOWN` / `RESTART` are denied unless `input.allow_remote_power = true`.
 - All remote input can be disabled with `input.enabled = false`.
+- When `session_crypto.required = true` (and backend `REQUIRE_ENCRYPTED_SALT=true`), approve must include `encryptedSalt` and the agent must decrypt it with the pairing private key before accepting a subscriber.
 - Local HTTP defaults to loopback (`127.0.0.1`); authenticated routes still require the HMAC `local_token` from `/info`.
-- Agent JWT possession (keychain) plus live signaling registration is the WAN trust boundary until DA-05 session crypto lands.
+- Agent JWT possession (keychain) plus live signaling registration is the WAN trust boundary; TURN credentials are fetched with the agent JWT when `signaling.api_url` is configured.
 
 ---
 

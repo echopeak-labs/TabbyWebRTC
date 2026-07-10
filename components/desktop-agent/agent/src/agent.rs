@@ -6,13 +6,14 @@ use capture::CaptureConfig;
 use input::InputPolicy;
 use signaling::{run_heartbeat_loop, AgentRegistration, SignalingClient};
 use tracing::info;
-use webrtc_peer::start_peer_stack;
+use webrtc_peer::{start_peer_stack, PeerStackOptions};
 
 use crate::config::AgentConfig;
 use crate::keychain;
 use crate::local_server;
 use crate::pairing;
 use crate::source_enumerator::SourceEnumerator;
+use crate::turn;
 use crate::updater;
 
 pub struct Agent {
@@ -36,6 +37,7 @@ impl Agent {
 
         let jwt = keychain::get_agent_jwt()?.context("agent JWT missing after keychain check")?;
         let public_key = keychain::get_pairing_public_key()?.unwrap_or_default();
+        let pairing_private_key = keychain::get_pairing_private_key()?;
 
         let sources = capture::enumerate_sources().context("initial source enumeration failed")?;
         info!(count = sources.len(), "enumerated capture sources");
@@ -74,13 +76,25 @@ impl Agent {
             allow_remote_power: self.config.input.allow_remote_power,
         };
 
+        let turn = match turn::fetch_turn_config(&self.config.signaling.api_url, &jwt).await {
+            Ok(turn) => turn,
+            Err(err) => {
+                tracing::warn!(%err, "TURN credentials unavailable, continuing with STUN only");
+                None
+            }
+        };
+
         let peer_stack = start_peer_stack(
             &self.config.signaling.url,
             &jwt,
             registration,
             capture_config,
-            None,
-            input_policy,
+            PeerStackOptions {
+                turn,
+                input_policy,
+                session_crypto_required: self.config.session_crypto.required,
+                pairing_private_key_b64: pairing_private_key,
+            },
         )
         .await
         .context("peer stack failed")?;
@@ -141,6 +155,7 @@ impl Agent {
             config = %self.config_path.display(),
             input_enabled = self.config.input.enabled,
             allow_remote_power = self.config.input.allow_remote_power,
+            session_crypto_required = self.config.session_crypto.required,
             "agent running"
         );
 

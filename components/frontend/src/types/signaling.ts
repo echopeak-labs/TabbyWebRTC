@@ -23,6 +23,6 @@ export type InboundSignalMessage =
 export type DesktopInboundMessage =
   | InboundSignalMessage
   | { type: 'SESSION_PENDING'; pendingSessionId: string; expiresIn: number }
-  | { type: 'AUTH_APPROVED'; token: string; agentId: string }
+  | { type: 'AUTH_APPROVED'; token: string; agentId: string; encryptedSalt?: string }
   | { type: 'SESSION_EXPIRED' }
   | { type: 'ERROR'; code: string; message: string }

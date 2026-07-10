@@ -120,6 +120,9 @@ async function handleRevokeAgent(
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const { ensureSecretsLoaded } = await import('../lib/secrets.js');
+  await ensureSecretsLoaded();
+
   const method = event.httpMethod;
   const path = event.path;
 

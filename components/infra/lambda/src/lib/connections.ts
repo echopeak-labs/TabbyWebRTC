@@ -39,9 +39,10 @@ export async function putConnection(
 export async function updateConnection(
   connectionId: string,
   updates: {
-    [K in keyof Pick<ConnectionRecord, 'agentId' | 'userId' | 'token' | 'pendingSessionId'>]?:
-      | ConnectionRecord[K]
-      | null;
+    [K in keyof Pick<
+      ConnectionRecord,
+      'agentId' | 'userId' | 'token' | 'pendingSessionId' | 'encryptedSalt'
+    >]?: ConnectionRecord[K] | null;
   },
 ): Promise<void> {
   const entries = Object.entries(updates).filter(([, value]) => value !== undefined);

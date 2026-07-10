@@ -79,40 +79,40 @@ Checklist for `docs/spec-1/review-fixes/`. Work findings in priority order from 
 ## Wave 2 — Hardening + completeness (medium)
 
 ### INF-06 UNSUBSCRIBE / ICE auth
-- [ ] `requireValidSessionToken` on browser `UNSUBSCRIBE`
-- [ ] Browser SDP_ANSWER / ICE require token + lock ownership
-- [ ] Agent ICE requires agent clientType + agentId match
+- [x] `requireValidSessionToken` on browser `UNSUBSCRIBE`
+- [x] Browser SDP_ANSWER / ICE require token + lock ownership
+- [x] Agent ICE requires agent clientType + agentId match
 
 ### INF-07 Update download policy
-- [ ] Record public vs private decision
-- [ ] If private: auth or signed URLs on download routes
+- [x] Record public vs private decision
+- [x] If private: auth or signed URLs on download routes
 
 ### INF-08 Secrets Manager
-- [ ] Move JWT / R2 / TURN / Clerk secrets to Secrets Manager (or SSM SecureString)
-- [ ] Lambda IAM + load at runtime
-- [ ] Update `rotate-secrets.sh`
+- [x] Move JWT / R2 / TURN / Clerk secrets to Secrets Manager (or SSM SecureString)
+- [x] Lambda IAM + load at runtime
+- [x] Update `rotate-secrets.sh`
 
 ### DA-05 Ed25519 / encryptedSalt E2E
-- [ ] Backend accepts and uses `encryptedSalt` on approve
-- [ ] Agent proves key possession before accepting stream/input
-- [ ] Feature-flagged rejection path
+- [x] Backend accepts and uses `encryptedSalt` on approve
+- [x] Agent proves key possession before accepting stream/input
+- [x] Feature-flagged rejection path
 
 ### DA-06 Release capture features
-- [ ] Enable `scap-capture` in release CI matrix
-- [ ] Fail or warn if release binary lacks real capture
-- [ ] Decide hardware-encode wiring
+- [x] Enable `scap-capture` in release CI matrix
+- [x] Fail or warn if release binary lacks real capture
+- [x] Decide hardware-encode wiring
 
 ### DA-07 Agent TURN
-- [ ] Fetch TURN credentials for agent (REST or via NOTIFY)
-- [ ] Pass into `start_peer_stack` ICE config
+- [x] Fetch TURN credentials for agent (REST or via NOTIFY)
+- [x] Pass into `start_peer_stack` ICE config
 - [ ] Strict-NAT relay smoke test
 
 ### FE-04 Agent switch clears session
-- [ ] TopBar switch clears JWT / sessionStorage before re-auth
-- [ ] No SUBSCRIBE with previous agentId token
+- [x] TopBar switch clears JWT / sessionStorage before re-auth
+- [x] No SUBSCRIBE with previous agentId token
 
 ### FE-05 Bitrate cap
-- [ ] Remove no-op UI **or** implement agent-side bitrate command + wire control bar
+- [x] Remove no-op UI **or** implement agent-side bitrate command + wire control bar
 
 ---
 

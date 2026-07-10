@@ -91,6 +91,7 @@ export async function handleSubscribe(
     sourceId: message.sourceId,
     tabId: message.tabId,
     browserConnectionId: connection.connectionId,
+    ...(connection.encryptedSalt ? { encryptedSalt: connection.encryptedSalt } : {}),
   });
 }
 
@@ -98,8 +99,14 @@ export async function handleUnsubscribe(
   message: UnsubscribeMessage,
   connection: ConnectionRecord,
 ): Promise<void> {
+  await requireValidSessionToken(connection);
+
   const lock = await getSourceLock(message.sourceId);
-  if (!lock || lock.tabId !== message.tabId) {
+  if (
+    !lock ||
+    lock.tabId !== message.tabId ||
+    lock.connectionId !== connection.connectionId
+  ) {
     return;
   }
 
@@ -157,13 +164,14 @@ export async function handleSdpAnswer(
   message: SdpAnswerMessage,
   connection: ConnectionRecord,
 ): Promise<void> {
+  await requireValidSessionToken(connection);
+
   const lock = await getSourceLock(message.sourceId);
-  if (!lock) {
-    throw new Error('NO_LOCK');
+  if (!lock || lock.connectionId !== connection.connectionId) {
+    throw new Error('UNAUTHORIZED');
   }
 
-  const agentId = connection.agentId ?? lock.agentId;
-  const agentConnectionId = await findAgentConnectionId(agentId);
+  const agentConnectionId = await findAgentConnectionId(lock.agentId);
   if (!agentConnectionId) {
     throw new Error('AGENT_OFFLINE');
   }
@@ -180,8 +188,18 @@ export async function handleIceCandidate(
   connection: ConnectionRecord,
 ): Promise<void> {
   if (connection.clientType === 'agent') {
+    if (!connection.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
     if (!message.targetConnectionId) {
       throw new Error('MISSING_TARGET');
+    }
+    const lock = await getSourceLock(message.sourceId);
+    if (!lock || lock.agentId !== connection.agentId) {
+      throw new Error('UNAUTHORIZED');
+    }
+    if (lock.connectionId !== message.targetConnectionId) {
+      throw new Error('UNAUTHORIZED');
     }
     await sendToConnection(message.targetConnectionId, {
       type: 'ICE_CANDIDATE',
@@ -191,9 +209,11 @@ export async function handleIceCandidate(
     return;
   }
 
+  await requireValidSessionToken(connection);
+
   const lock = await getSourceLock(message.sourceId);
-  if (!lock) {
-    throw new Error('NO_LOCK');
+  if (!lock || lock.connectionId !== connection.connectionId) {
+    throw new Error('UNAUTHORIZED');
   }
 
   const agentConnectionId = await findAgentConnectionId(lock.agentId);

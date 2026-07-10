@@ -121,6 +121,15 @@ Streams the latest installer for the requested platform. Used by the auto-update
 
 **No authentication required.** Manifest and downloads are public read endpoints.
 
+### Security decision (INF-07)
+
+Installer distribution is **intentionally public**:
+
+- Agents and first-time installers must fetch updates without a session JWT.
+- Integrity is enforced by SHA-256 in `manifest.json` (agent verifies before install).
+- Code signing / notarization remains a separate cicd blocker; public HTTPS + hash check is the current trust model.
+- Private/authenticated downloads are out of scope unless a future private channel is introduced.
+
 ---
 
 ## Manifest Schema

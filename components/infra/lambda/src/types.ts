@@ -14,6 +14,7 @@ export interface ConnectionRecord {
   userId?: string | null;
   token?: string;
   pendingSessionId?: string;
+  encryptedSalt?: string;
   connectedAt: number;
   TTL: number;
 }

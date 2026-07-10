@@ -14,6 +14,8 @@ pub struct AgentConfig {
     pub input: InputSection,
     #[serde(default)]
     pub updates: UpdatesSection,
+    #[serde(default)]
+    pub session_crypto: SessionCryptoSection,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +62,12 @@ pub struct UpdatesSection {
     pub channel: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionCryptoSection {
+    #[serde(default)]
+    pub required: bool,
+}
+
 fn default_true() -> bool {
     true
 }
@@ -93,6 +101,12 @@ impl Default for UpdatesSection {
     }
 }
 
+impl Default for SessionCryptoSection {
+    fn default() -> Self {
+        Self { required: false }
+    }
+}
+
 impl Default for AgentConfig {
     fn default() -> Self {
         Self {
@@ -115,6 +129,7 @@ impl Default for AgentConfig {
             },
             input: InputSection::default(),
             updates: UpdatesSection::default(),
+            session_crypto: SessionCryptoSection::default(),
         }
     }
 }

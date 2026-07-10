@@ -9,11 +9,10 @@ import {
   Power,
   RotateCcw,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ConfirmDialog } from '@/components/layout/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { readClipboardText, sendInput, type CommandName } from '@/lib/input-codec'
-import { applyBitrateCap, BITRATE_CAPS, type BitratePreset } from '@/lib/webrtc'
 import { cn } from '@/lib/utils'
 
 export interface StreamControlBarProps {
@@ -34,33 +33,13 @@ function sendCommand(channel: RTCDataChannel | null, name: CommandName): void {
 
 export function StreamControlBar({
   inputChannel,
-  peerConnection,
   mode,
   onModeChange,
   visible = true,
   onExit,
   className,
 }: StreamControlBarProps) {
-  const [bitrate, setBitrate] = useState<BitratePreset>('medium')
   const [pendingCommand, setPendingCommand] = useState<PendingCommand>(null)
-
-  const applyBitrate = useCallback(
-    async (preset: BitratePreset) => {
-      setBitrate(preset)
-      if (!peerConnection) {
-        return
-      }
-      const sender = peerConnection.getSenders().find((s) => s.track?.kind === 'video')
-      if (sender) {
-        await applyBitrateCap(sender, BITRATE_CAPS[preset])
-      }
-    },
-    [peerConnection],
-  )
-
-  useEffect(() => {
-    void applyBitrate(bitrate)
-  }, [applyBitrate, bitrate, peerConnection])
 
   const handlePaste = async () => {
     try {
@@ -143,16 +122,6 @@ export function StreamControlBar({
         >
           {mode === 'relative' ? <MousePointer2 /> : <Crosshair />}
         </Button>
-        <select
-          value={bitrate}
-          onChange={(e) => void applyBitrate(e.target.value as BitratePreset)}
-          className="h-9 rounded-md border border-input bg-background px-2 text-xs text-textPrimary"
-          title="Bitrate"
-        >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
         <Button variant="ghost" size="icon" title="Exit stream" onClick={onExit}>
           <LogOut />
         </Button>

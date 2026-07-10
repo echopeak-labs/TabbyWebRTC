@@ -141,6 +141,124 @@ describe('signaling round-trip', () => {
     });
   });
 
+  it('rejects UNSUBSCRIBE without session token', async () => {
+    const browserConnectionId = 'browser-conn';
+    const agentId = 'agent-1';
+
+    ddbMock.on(GetCommand).callsFake((input) => {
+      if (input.TableName === 'connections') {
+        return {
+          Item: {
+            connectionId: browserConnectionId,
+            clientType: 'browser',
+            agentId,
+            userId: 'user-1',
+            connectedAt: Date.now(),
+            TTL: 9999999999,
+          },
+        };
+      }
+      return {};
+    });
+
+    await expect(
+      dispatchMessage(
+        { type: 'UNSUBSCRIBE', sourceId: 'display-1', tabId: 'tab-1' },
+        browserConnectionId,
+      ),
+    ).rejects.toThrow('UNAUTHORIZED');
+  });
+
+  it('rejects SDP_ANSWER from non-owner connection', async () => {
+    const browserConnectionId = 'browser-conn';
+    const otherConnectionId = 'other-browser';
+    const agentId = 'agent-1';
+    const sessionToken = await issueTabbyWebRTCToken('user-1', agentId);
+
+    ddbMock.on(GetCommand).callsFake((input) => {
+      if (input.TableName === 'connections') {
+        return {
+          Item: {
+            connectionId: otherConnectionId,
+            clientType: 'browser',
+            agentId,
+            userId: 'user-1',
+            token: sessionToken,
+            connectedAt: Date.now(),
+            TTL: 9999999999,
+          },
+        };
+      }
+      if (input.TableName === 'source-locks') {
+        return {
+          Item: {
+            sourceId: 'display-1',
+            tabId: 'tab-1',
+            connectionId: browserConnectionId,
+            agentId,
+            TTL: 9999999999,
+          },
+        };
+      }
+      return {};
+    });
+
+    await expect(
+      dispatchMessage(
+        {
+          type: 'SDP_ANSWER',
+          sourceId: 'display-1',
+          sdp: { type: 'answer', sdp: 'v=0' },
+        },
+        otherConnectionId,
+      ),
+    ).rejects.toThrow('UNAUTHORIZED');
+  });
+
+  it('rejects agent ICE_CANDIDATE without lock ownership', async () => {
+    const agentConnectionId = 'agent-conn';
+    const agentId = 'agent-1';
+
+    ddbMock.on(GetCommand).callsFake((input) => {
+      if (input.TableName === 'connections') {
+        return {
+          Item: {
+            connectionId: agentConnectionId,
+            clientType: 'agent',
+            agentId,
+            userId: 'user-1',
+            connectedAt: Date.now(),
+            TTL: 9999999999,
+          },
+        };
+      }
+      if (input.TableName === 'source-locks') {
+        return {
+          Item: {
+            sourceId: 'display-1',
+            tabId: 'tab-1',
+            connectionId: 'browser-conn',
+            agentId: 'other-agent',
+            TTL: 9999999999,
+          },
+        };
+      }
+      return {};
+    });
+
+    await expect(
+      dispatchMessage(
+        {
+          type: 'ICE_CANDIDATE',
+          sourceId: 'display-1',
+          candidate: { candidate: 'a' },
+          targetConnectionId: 'browser-conn',
+        },
+        agentConnectionId,
+      ),
+    ).rejects.toThrow('UNAUTHORIZED');
+  });
+
   it('rejects SDP_OFFER from non-agent connections', async () => {
     const browserConnectionId = 'browser-conn';
     const agentId = 'agent-1';
