@@ -10,5 +10,5 @@ alwaysApply: true
 - A real macOS machine on the same LAN opening the webapp is a **viewer**, not an agent host.
 - Viewer browser in current setup: Brave (Chromium) on macOS — prefer Chromium WebRTC behavior over Safari-only assumptions.
 - "macOS guest" means a browser on that Mac viewing the host — not an agent running there.
-- Screen capture, PipeWire/SCK portals, and agent logs always refer to the **host**.
+- Screen capture on the Linux host is **X11-only** (no Wayland). PipeWire/SCK portals and agent logs always refer to the **host**.
 - Do not suggest installing or running the agent on a viewer machine unless the user explicitly changes this model.

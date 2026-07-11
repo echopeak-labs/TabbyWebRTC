@@ -64,6 +64,13 @@ export default defineConfig(() => {
     },
     server: {
       host: true,
+      proxy: {
+        '/local-agent': {
+          target: 'http://127.0.0.1:7700',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/local-agent/, ''),
+        },
+      },
     },
   }
 })

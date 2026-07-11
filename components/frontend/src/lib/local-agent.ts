@@ -52,26 +52,91 @@ export function storeLocalEndpoint(baseUrl: string): void {
     return
   }
   sessionStorage.setItem(LOCAL_ENDPOINT_KEY, normalized)
+  try {
+    const url = new URL(normalized)
+    if (url.pathname.replace(/\/$/, '') === '/local-agent') {
+      return
+    }
+  } catch {
+    return
+  }
   rememberHost(normalized)
 }
 
 export function normalizeAgentBaseUrl(baseUrl: string): string | null {
   try {
     const url = new URL(baseUrl.includes('://') ? baseUrl : `http://${baseUrl}`)
-    if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
-      const host = window.location.hostname
-      if (!host || host === 'localhost' || host === '127.0.0.1') {
-        return null
+    const pageHost = typeof window !== 'undefined' ? window.location.hostname : ''
+    const pageIsLoopback = pageHost === 'localhost' || pageHost === '127.0.0.1'
+    const targetIsLoopback =
+      url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+    const targetIsUnspecified =
+      url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]'
+
+    if (targetIsUnspecified || (targetIsLoopback && !pageIsLoopback)) {
+      if (!pageHost || pageIsLoopback) {
+        if (targetIsUnspecified) {
+          return null
+        }
+      } else {
+        url.hostname = pageHost
       }
-      url.hostname = host
     }
-    url.pathname = ''
+
+    if (!pageIsLoopback && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
+      return null
+    }
+
+    const path = url.pathname.replace(/\/$/, '')
+    if (path && path !== '/local-agent' && !path.startsWith('/local-agent/')) {
+      url.pathname = ''
+    } else if (path === '/local-agent' || path.startsWith('/local-agent/')) {
+      url.pathname = '/local-agent'
+    } else {
+      url.pathname = ''
+    }
     url.search = ''
     url.hash = ''
     return url.toString().replace(/\/$/, '')
   } catch {
     return null
   }
+}
+
+export function localAgentBaseUrlCandidates(preferred?: string | null): string[] {
+  const pageHost = typeof window !== 'undefined' ? window.location.hostname : ''
+  const pageIsLoopback = pageHost === 'localhost' || pageHost === '127.0.0.1'
+  const sameOriginProxy =
+    typeof window !== 'undefined' ? `${window.location.origin}/local-agent` : null
+  const sameHost =
+    pageHost && !pageIsLoopback
+      ? `http://${pageHost}:7700`
+      : pageIsLoopback
+        ? 'http://127.0.0.1:7700'
+        : null
+  const loopback = pageIsLoopback ? ['http://127.0.0.1:7700', 'http://localhost:7700'] : []
+
+  return [sameOriginProxy, preferred, readStoredLocalEndpoint(), sameHost, ...loopback]
+    .map((value) => (value ? normalizeAgentBaseUrl(value) : null))
+    .filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index)
+}
+
+export async function resolveReachableLocalAgent(
+  agentId: string | null,
+  preferred?: string | null,
+): Promise<AgentInfo | null> {
+  for (const url of localAgentBaseUrlCandidates(preferred)) {
+    const info = await probeAgentInfo(url)
+    if (!info) {
+      continue
+    }
+    if (agentId && info.agentId && info.agentId !== agentId) {
+      continue
+    }
+    storeLocalEndpoint(info.baseUrl)
+    return info
+  }
+  return null
 }
 
 export function readStoredLocalEndpoint(): string | null {

@@ -1,51 +1,82 @@
 import { useEffect } from 'react'
+import { resolveReachableLocalAgent } from '@/lib/local-agent'
 import { useAgentStore } from '@/stores/agentStore'
+import { useAuthStore } from '@/stores/authStore'
 
-const POLL_INTERVAL_MS = 300_000
+const POLL_INTERVAL_MS = 15_000
 
-async function fetchThumbnail(
+interface ThumbnailView {
+  id: string
+  jpeg_base64?: string
+  jpegBase64?: string
+}
+
+async function fetchAllThumbnails(
   baseUrl: string,
-  sourceId: string,
   localToken: string,
-): Promise<string | null> {
-  const url = `${baseUrl}/thumbnail/${sourceId}`
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${localToken}` },
-  })
-
-  if (!response.ok) {
+): Promise<ThumbnailView[] | null> {
+  try {
+    const response = await fetch(`${baseUrl}/thumbnails`, {
+      headers: { Authorization: `Bearer ${localToken}` },
+    })
+    if (!response.ok) {
+      return null
+    }
+    const data = (await response.json()) as { thumbnails?: ThumbnailView[] }
+    return Array.isArray(data.thumbnails) ? data.thumbnails : null
+  } catch {
     return null
   }
-
-  const blob = await response.blob()
-  return URL.createObjectURL(blob)
 }
 
 export function useThumbnailPoller(_sessionToken: string | null): void {
-  const agentBaseUrl = useAgentStore((s) => s.agentBaseUrl)
-  const localToken = useAgentStore((s) => s.localToken)
   const displays = useAgentStore((s) => s.displays)
   const apps = useAgentStore((s) => s.apps)
   const setThumbnail = useAgentStore((s) => s.setThumbnail)
+  const setAgentBaseUrl = useAgentStore((s) => s.setAgentBaseUrl)
+  const setLocalToken = useAgentStore((s) => s.setLocalToken)
+  const agentId = useAuthStore((s) => s.agentId)
+
+  const sourceKey = [
+    ...displays.map((d) => d.id),
+    ...apps.map((a) => a.id),
+  ].join(',')
 
   useEffect(() => {
-    if (!localToken || !agentBaseUrl) {
-      return
-    }
-
-    const sourceIds = [...displays.map((d) => d.id), ...apps.map((a) => a.id)]
-    if (sourceIds.length === 0) {
+    if (!sourceKey) {
       return
     }
 
     let cancelled = false
 
     const poll = async () => {
-      for (const sourceId of sourceIds) {
-        if (cancelled) return
-        const url = await fetchThumbnail(agentBaseUrl, sourceId, localToken)
-        if (url && !cancelled) {
-          setThumbnail(sourceId, url)
+      const preferred = useAgentStore.getState().agentBaseUrl
+      const info = await resolveReachableLocalAgent(agentId, preferred)
+      if (cancelled || !info) {
+        return
+      }
+
+      setAgentBaseUrl(info.baseUrl)
+      setLocalToken(info.localToken)
+
+      const thumbnails = await fetchAllThumbnails(info.baseUrl, info.localToken)
+      if (cancelled || !thumbnails) {
+        return
+      }
+
+      for (const item of thumbnails) {
+        const jpeg = item.jpeg_base64 ?? item.jpegBase64
+        if (!jpeg) {
+          continue
+        }
+        const nextUrl = `data:image/jpeg;base64,${jpeg}`
+        const prev = [
+          ...useAgentStore.getState().displays,
+          ...useAgentStore.getState().apps,
+        ].find((s) => s.id === item.id)?.thumbnailUrl
+        setThumbnail(item.id, nextUrl)
+        if (prev?.startsWith('blob:')) {
+          URL.revokeObjectURL(prev)
         }
       }
     }
@@ -57,5 +88,5 @@ export function useThumbnailPoller(_sessionToken: string | null): void {
       cancelled = true
       clearInterval(interval)
     }
-  }, [agentBaseUrl, apps, displays, localToken, setThumbnail])
+  }, [agentId, setAgentBaseUrl, setLocalToken, setThumbnail, sourceKey])
 }

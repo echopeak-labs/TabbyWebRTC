@@ -37,16 +37,15 @@ pub enum PixelFormat { BGRA, NV12 }
 
 ## Platform Implementations
 
-### Linux (PipeWire via XDG Desktop Portal)
+### Linux (X11 only)
 
-- Crate: `ashpd` (XDG Desktop Portal bindings) + `pipewire` (PipeWire client).
-- Flow:
-  1. Request screen cast via `ScreenCastProxy::create_session()`.
-  2. Select source type (Monitor or Window).
-  3. Start stream → receive PipeWire `spa_video_info_raw` frames.
-- Frame format: typically `NV12` or `BGRA` depending on compositor.
-- Wayland and X11 are both supported via the portal abstraction.
-- Cursor exclusion: Portal `CursorMode::Hidden` flag.
+**Wayland is not supported.** The host must run an X11 session (`XDG_SESSION_TYPE=x11`, `DISPLAY` set, no `WAYLAND_DISPLAY`).
+
+- Capture: direct root-window grab via X11 RandR + MIT-SHM (`x11rb`), no XDG Desktop Portal / PipeWire picker.
+- Enumerate connected monitors with RandR 1.5 `GetMonitors`.
+- Frame format: packed BGRA.
+- Cursor is not composited into the grab (X11 `GetImage`/`ShmGetImage` excludes the hardware cursor).
+- PipeWire portal capture remains available behind the optional `scap-capture` feature for future Wayland work, but is not used on X11 hosts.
 
 ### Windows (DXGI Desktop Duplication)
 

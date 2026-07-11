@@ -2,13 +2,13 @@ use jpeg_encoder::{ColorType, Encoder};
 
 use crate::{Frame, PixelFormat};
 
-pub const THUMBNAIL_WIDTH: u32 = 320;
-pub const THUMBNAIL_HEIGHT: u32 = 180;
-pub const THUMBNAIL_QUALITY: u8 = 60;
+pub const THUMBNAIL_WIDTH: u32 = 960;
+pub const THUMBNAIL_HEIGHT: u32 = 540;
+pub const THUMBNAIL_QUALITY: u8 = 80;
 
 pub fn frame_to_jpeg(frame: &Frame) -> anyhow::Result<Vec<u8>> {
     let rgba = frame_to_rgba(frame)?;
-    let scaled = scale_nearest(&rgba, frame.width, frame.height, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+    let scaled = scale_bilinear(&rgba, frame.width, frame.height, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
     let rgb = rgba_to_rgb(&scaled);
     let mut out = Vec::new();
     let encoder = Encoder::new(&mut out, THUMBNAIL_QUALITY);
@@ -65,7 +65,7 @@ fn nv12_to_rgba(nv12: &[u8], width: u32, height: u32) -> anyhow::Result<Vec<u8>>
     Ok(rgba)
 }
 
-fn scale_nearest(
+fn scale_bilinear(
     src: &[u8],
     src_w: u32,
     src_h: u32,
@@ -74,12 +74,25 @@ fn scale_nearest(
 ) -> Vec<u8> {
     let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
     for y in 0..dst_h {
-        let src_y = y * src_h / dst_h;
+        let sy = (y as f32 + 0.5) * src_h as f32 / dst_h as f32 - 0.5;
+        let y0 = sy.floor().max(0.0) as u32;
+        let y1 = (y0 + 1).min(src_h - 1);
+        let fy = sy - y0 as f32;
         for x in 0..dst_w {
-            let src_x = x * src_w / dst_w;
-            let src_idx = ((src_y * src_w + src_x) * 4) as usize;
+            let sx = (x as f32 + 0.5) * src_w as f32 / dst_w as f32 - 0.5;
+            let x0 = sx.floor().max(0.0) as u32;
+            let x1 = (x0 + 1).min(src_w - 1);
+            let fx = sx - x0 as f32;
             let dst_idx = ((y * dst_w + x) * 4) as usize;
-            dst[dst_idx..dst_idx + 4].copy_from_slice(&src[src_idx..src_idx + 4]);
+            for c in 0..4 {
+                let p00 = src[((y0 * src_w + x0) * 4 + c as u32) as usize] as f32;
+                let p10 = src[((y0 * src_w + x1) * 4 + c as u32) as usize] as f32;
+                let p01 = src[((y1 * src_w + x0) * 4 + c as u32) as usize] as f32;
+                let p11 = src[((y1 * src_w + x1) * 4 + c as u32) as usize] as f32;
+                let top = p00 + (p10 - p00) * fx;
+                let bottom = p01 + (p11 - p01) * fx;
+                dst[dst_idx + c] = (top + (bottom - top) * fy).round().clamp(0.0, 255.0) as u8;
+            }
         }
     }
     dst

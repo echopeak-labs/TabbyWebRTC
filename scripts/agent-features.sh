@@ -6,9 +6,8 @@ agent_cargo_features() {
   os="$(uname -s | tr '[:upper:]' '[:lower:]')"
   case "$os" in
     linux)
-      if command -v pkg-config >/dev/null \
-        && pkg-config --exists libpipewire-0.3 2>/dev/null; then
-        features+=("scap-capture")
+      if [[ -n "${DISPLAY:-}" ]] && [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+        features+=("x11-capture")
       fi
       if command -v pkg-config >/dev/null \
         && pkg-config --exists libavcodec libavutil libswscale 2>/dev/null; then

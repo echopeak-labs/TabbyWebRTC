@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::Context;
 use axum::{
-    extract::{Path, State, WebSocketUpgrade},
+    extract::{State, WebSocketUpgrade},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
@@ -52,6 +52,19 @@ pub struct SourceView {
     pub name: String,
     pub width: u32,
     pub height: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumbnail_jpeg_base64: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ThumbnailsResponse {
+    pub thumbnails: Vec<ThumbnailView>,
+}
+
+#[derive(Serialize)]
+pub struct ThumbnailView {
+    pub id: String,
+    pub jpeg_base64: String,
 }
 
 pub fn spawn(
@@ -74,7 +87,8 @@ pub fn spawn(
     let app = Router::new()
         .route("/info", get(info_handler))
         .route("/sources", get(sources_handler))
-        .route("/thumbnail/:source_id", get(thumbnail_handler))
+        .route("/thumbnails", get(thumbnails_handler))
+        .route("/thumbnail/{source_id}", get(thumbnail_handler))
         .route("/signal", get(signal_ws_handler))
         .layer(CorsLayer::permissive().allow_private_network(true))
         .with_state(state.clone());
@@ -156,7 +170,7 @@ async fn sources_handler(
     headers: HeaderMap,
 ) -> Result<Json<SourcesResponse>, StatusCode> {
     validate_local_token(&state, &headers)?;
-    let sources = state.sources.read().await;
+    let sources = state.sources.read().await.clone();
     let mut displays = Vec::new();
     let mut apps = Vec::new();
     for source in sources.iter() {
@@ -165,6 +179,7 @@ async fn sources_handler(
             name: source.name.clone(),
             width: source.width,
             height: source.height,
+            thumbnail_jpeg_base64: None,
         };
         match source.kind {
             SourceKind::Display => displays.push(view),
@@ -174,18 +189,76 @@ async fn sources_handler(
     Ok(Json(SourcesResponse { displays, apps }))
 }
 
+async fn thumbnails_handler(
+    State(state): State<Arc<LocalServerState>>,
+    headers: HeaderMap,
+) -> Result<Json<ThumbnailsResponse>, StatusCode> {
+    validate_local_token(&state, &headers)?;
+    let mut source_ids: Vec<String> = {
+        let sources = state.sources.read().await;
+        sources
+            .iter()
+            .filter(|s| matches!(s.kind, SourceKind::Display))
+            .map(|s| s.id.clone())
+            .collect()
+    };
+    if source_ids.is_empty() {
+        let sources = state.sources.read().await;
+        source_ids = sources.iter().map(|s| s.id.clone()).collect();
+    }
+
+    let thumbnails = tokio::task::spawn_blocking(move || {
+        let mut out = Vec::new();
+        for source_id in source_ids {
+            match capture::capture_thumbnail(&source_id) {
+                Ok(jpeg) => {
+                    out.push(ThumbnailView {
+                        id: source_id,
+                        jpeg_base64: base64::engine::general_purpose::STANDARD.encode(jpeg),
+                    });
+                }
+                Err(err) => {
+                    tracing::warn!(%source_id, %err, "thumbnail capture failed");
+                }
+            }
+        }
+        out
+    })
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(ThumbnailsResponse { thumbnails }))
+}
+
 async fn thumbnail_handler(
     State(state): State<Arc<LocalServerState>>,
     headers: HeaderMap,
-    Path(source_id): Path<String>,
+    uri: axum::http::Uri,
 ) -> Result<Response, StatusCode> {
     validate_local_token(&state, &headers)?;
-    let jpeg = capture::capture_thumbnail(&source_id).map_err(|_| StatusCode::NOT_FOUND)?;
-    Ok((
-        [(header::CONTENT_TYPE, "image/jpeg")],
-        jpeg,
-    )
-        .into_response())
+    let source_id = uri
+        .path()
+        .strip_prefix("/thumbnail/")
+        .ok_or(StatusCode::NOT_FOUND)?
+        .to_string();
+    if source_id.is_empty() || source_id.contains('/') {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    let id = source_id.clone();
+    let result = tokio::task::spawn_blocking(move || capture::capture_thumbnail(&source_id))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    match result {
+        Ok(jpeg) => Ok((
+            [(header::CONTENT_TYPE, "image/jpeg")],
+            jpeg,
+        )
+            .into_response()),
+        Err(err) => {
+            tracing::warn!(source_id = %id, %err, "thumbnail capture failed");
+            Err(StatusCode::NOT_FOUND)
+        }
+    }
 }
 
 async fn signal_ws_handler(

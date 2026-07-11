@@ -76,9 +76,16 @@ async function tryLocalEndpoint(agent: PairedAgent): Promise<{ url: string; loca
       if (!response.ok) {
         continue
       }
-      const info = (await response.json()) as { agentId?: string; localToken?: string }
-      if (info.agentId === agent.agentId && info.localToken) {
-        return { url: base.replace(/\/$/, ''), localToken: info.localToken }
+      const info = (await response.json()) as {
+        agentId?: string
+        agent_id?: string
+        localToken?: string
+        local_token?: string
+      }
+      const agentId = info.agentId ?? info.agent_id
+      const localToken = info.localToken ?? info.local_token
+      if (agentId === agent.agentId && localToken) {
+        return { url: base.replace(/\/$/, ''), localToken }
       }
     } catch {
     }

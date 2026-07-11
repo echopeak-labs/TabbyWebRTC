@@ -7,6 +7,7 @@ import { getPairedAgentsFromUser, removePairedAgent } from '@/lib/clerk-client'
 import { useMobileStore } from '@/stores/mobileStore'
 
 const REST_URL = import.meta.env.VITE_REST_URL
+const STATUS_POLL_MS = 30_000
 
 function platformLabel(platform: string): string {
   switch (platform) {
@@ -21,12 +22,10 @@ function platformLabel(platform: string): string {
   }
 }
 
-function isAgentOnline(lastSeen: string): boolean {
-  const seen = new Date(lastSeen).getTime()
-  if (Number.isNaN(seen)) {
-    return false
-  }
-  return Date.now() - seen < 5 * 60 * 1000
+interface AgentStatus {
+  id: string
+  online: boolean
+  lastSeen: string
 }
 
 export function MobileAgentsPage() {
@@ -38,6 +37,7 @@ export function MobileAgentsPage() {
   const setClerkUserId = useMobileStore((s) => s.setClerkUserId)
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [onlineById, setOnlineById] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!user) {
@@ -49,6 +49,44 @@ export function MobileAgentsPage() {
       setPairedAgents(agents)
     }
   }, [user, setClerkUserId, setPairedAgents])
+
+  const refreshOnlineStatus = useCallback(async () => {
+    try {
+      const clerkJwt = await getToken()
+      if (!clerkJwt) {
+        return
+      }
+      const response = await fetch(`${REST_URL}/agents`, {
+        headers: { Authorization: `Bearer ${clerkJwt}` },
+      })
+      if (!response.ok) {
+        return
+      }
+      const data = (await response.json()) as { agents: AgentStatus[] }
+      const next: Record<string, boolean> = {}
+      for (const agent of data.agents) {
+        next[agent.id] = Boolean(agent.online)
+      }
+      setOnlineById(next)
+    } catch {
+      return
+    }
+  }, [getToken])
+
+  useEffect(() => {
+    void refreshOnlineStatus()
+    const interval = window.setInterval(() => void refreshOnlineStatus(), STATUS_POLL_MS)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshOnlineStatus()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [refreshOnlineStatus])
 
   const handleRevoke = useCallback(
     async (agentId: string) => {
@@ -72,6 +110,11 @@ export function MobileAgentsPage() {
         }
         const updated = await removePairedAgent(user, agentId)
         setPairedAgents(updated)
+        setOnlineById((prev) => {
+          const next = { ...prev }
+          delete next[agentId]
+          return next
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Revoke failed')
       } finally {
@@ -104,7 +147,7 @@ export function MobileAgentsPage() {
         ) : (
           <ul className="space-y-3">
             {pairedAgents.map((agent) => {
-              const online = isAgentOnline(agent.lastSeen)
+              const online = onlineById[agent.agentId] === true
               return (
                 <li
                   key={agent.agentId}

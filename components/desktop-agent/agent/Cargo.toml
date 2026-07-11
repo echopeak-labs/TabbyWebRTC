@@ -47,4 +47,5 @@ workspace = true
 default = []
 hardware-encode = ["capture/hardware-encode"]
 scap-capture = ["capture/scap-capture"]
+x11-capture = ["capture/x11-capture"]
 software-encode = []

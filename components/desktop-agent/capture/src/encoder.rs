@@ -94,6 +94,11 @@ impl H264Encoder {
                     }
                 }
             },
+            #[cfg(not(feature = "hardware-encode"))]
+            EncoderBackend::Vaapi => EncoderImpl::Software {
+                encoder: build_software_encoder(params)?,
+                yuv_scratch: YUVBuffer::new(params.width as usize, params.height as usize),
+            },
             EncoderBackend::Software
             | EncoderBackend::Nvenc
             | EncoderBackend::VideoToolbox => EncoderImpl::Software {

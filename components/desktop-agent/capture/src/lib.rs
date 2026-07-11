@@ -10,6 +10,8 @@ mod scap_source;
 mod synthetic;
 mod thumbnail;
 mod windows;
+#[cfg(all(target_os = "linux", feature = "x11-capture"))]
+mod x11_source;
 
 use serde::{Deserialize, Serialize};
 

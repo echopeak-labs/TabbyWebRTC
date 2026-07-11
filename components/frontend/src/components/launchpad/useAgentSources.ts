@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   normalizeAgentBaseUrl,
-  probeAgentInfo,
-  readRememberedHosts,
-  readStoredLocalEndpoint,
+  resolveReachableLocalAgent,
   storeLocalEndpoint,
 } from '@/lib/local-agent'
 import { signalClient } from '@/lib/signal-client'
@@ -22,11 +20,6 @@ interface SourceView {
 interface SourcesResponse {
   displays: SourceView[]
   apps: SourceView[]
-}
-
-interface LocalProbeResult {
-  baseUrl: string
-  localToken: string
 }
 
 function mapSources(
@@ -60,47 +53,6 @@ function mapSources(
       }
     }),
   }
-}
-
-async function probeLocalAgent(baseUrl: string, agentId: string): Promise<LocalProbeResult | null> {
-  const info = await probeAgentInfo(baseUrl)
-  if (!info || info.agentId !== agentId) {
-    return null
-  }
-  return { baseUrl: baseUrl.replace(/\/$/, ''), localToken: info.localToken }
-}
-
-async function resolveLocalAgent(agentId: string): Promise<LocalProbeResult | null> {
-  const stored = readStoredLocalEndpoint()
-  const remembered = readRememberedHosts().map((host) =>
-    host.includes('://') ? host.replace(/\/$/, '') : `http://${host}`,
-  )
-  const host = window.location.hostname
-  const sameHostLan =
-    host && host !== 'localhost' && host !== '127.0.0.1'
-      ? `http://${host}:7700`
-      : null
-  const loopback =
-    host === 'localhost' || host === '127.0.0.1'
-      ? ['http://127.0.0.1:7700', 'http://localhost:7700']
-      : []
-  const candidates = [
-    stored,
-    ...remembered,
-    sameHostLan,
-    ...loopback,
-  ]
-    .map((value) => (value ? normalizeAgentBaseUrl(value) : null))
-    .filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index)
-
-  for (const url of candidates) {
-    const probed = await probeLocalAgent(url, agentId)
-    if (probed) {
-      storeLocalEndpoint(probed.baseUrl)
-      return probed
-    }
-  }
-  return null
 }
 
 async function fetchLocalSources(
@@ -156,7 +108,7 @@ export function useAgentSources(token: string | null, agentId: string | null): {
 
     setLoading(true)
 
-    const local = await resolveLocalAgent(agentId)
+    const local = await resolveReachableLocalAgent(agentId)
     if (local) {
       setAgentBaseUrl(local.baseUrl)
       setLocalToken(local.localToken)
@@ -203,11 +155,7 @@ export function useAgentSources(token: string | null, agentId: string | null): {
         applySources(raw.displays, raw.apps, raw.localEndpoint)
         if (raw.localEndpoint) {
           void (async () => {
-            const normalized = normalizeAgentBaseUrl(raw.localEndpoint!)
-            if (!normalized) {
-              return
-            }
-            const probed = await probeLocalAgent(normalized, agentId)
+            const probed = await resolveReachableLocalAgent(agentId, raw.localEndpoint)
             if (probed) {
               setLocalToken(probed.localToken)
               setAgentBaseUrl(probed.baseUrl)

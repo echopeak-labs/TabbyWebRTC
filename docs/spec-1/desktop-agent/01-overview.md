@@ -11,7 +11,7 @@ Defines the Rust desktop agent binary: architecture, threading model, component 
 - **Language:** Rust (stable toolchain, MSRV 1.80)
 - **Binary name:** `tabbywebrtc-agent`
 - **Run mode:** Standalone executable, no installer required. Can be registered as a system service.
-- **Platforms:** Linux (priority), Windows, macOS.
+- **Platforms:** Linux **X11** (priority; Wayland not supported), Windows, macOS.
 - **Startup:** Reads config, connects to AWS WebSocket signaling, begins heartbeat loop. No GUI window.
 
 ---
@@ -67,7 +67,8 @@ desktop-agent/
 | `tokio-tungstenite` | WebSocket client |
 | `serde` + `serde_json` | Message serialization |
 | `enigo` | Cross-platform input injection (mouse + keyboard) |
-| `scap` | Cross-platform screen capture (wraps DXGI/SCK/PipeWire) |
+| `scap` | Screen capture on Windows/macOS (and optional Linux PipeWire path; unused on X11) |
+| `x11rb` | Linux X11 RandR + MIT-SHM display capture (no portal) |
 | `openh264` | Software H.264 encoder fallback |
 | `ffmpeg-next` | Hardware-accelerated H.264 encoding (NVENC, VideoToolbox, VAAPI) |
 | `ed25519-dalek` | Ed25519 keypair for agent pairing |

@@ -36,8 +36,14 @@ export class AgentsController {
     }
 
     try {
-      const payload = await verifyTabbyWebRTCToken(token);
-      const userId = payload.sub!;
+      let userId: string;
+      try {
+        const payload = await verifyTabbyWebRTCToken(token);
+        userId = payload.sub!;
+      } catch {
+        const clerk = await verifyClerkJwt(token);
+        userId = clerk.userId;
+      }
       const agentList = this.agents.listAgentsByUserId(userId);
 
       return {

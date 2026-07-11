@@ -1,11 +1,42 @@
 use crate::synthetic::SyntheticCapturable;
 use crate::{SourceDescriptor, SourceKind};
 
-#[cfg(feature = "scap-capture")]
+#[cfg(feature = "x11-capture")]
+use crate::x11_source::{self, is_x11_session};
+
+#[cfg(all(feature = "scap-capture", not(feature = "x11-capture")))]
 use crate::scap_source::{scap_targets, ScapCapturable, target_dimensions, target_from_id};
 
 pub fn enumerate_sources() -> anyhow::Result<Vec<SourceDescriptor>> {
-    #[cfg(feature = "scap-capture")]
+    #[cfg(feature = "x11-capture")]
+    {
+        if is_x11_session() {
+            match x11_source::enumerate_displays() {
+                Ok(mut sources) if !sources.is_empty() => {
+                    match x11_source::enumerate_windows() {
+                        Ok(windows) if !windows.is_empty() => sources.extend(windows),
+                        Ok(_) => {
+                            tracing::info!("no x11 client windows; using process heuristics");
+                            sources.extend(x11_source::enumerate_common_gui_processes());
+                        }
+                        Err(err) => {
+                            tracing::warn!(%err, "x11 window enumeration failed");
+                            sources.extend(x11_source::enumerate_common_gui_processes());
+                        }
+                    }
+                    return Ok(sources);
+                }
+                Ok(_) => tracing::warn!("x11 display enumeration returned no monitors"),
+                Err(err) => tracing::warn!(%err, "x11 display enumeration failed"),
+            }
+        } else {
+            tracing::error!(
+                "Wayland is not supported for display capture; log into an X11 session"
+            );
+        }
+    }
+
+    #[cfg(all(feature = "scap-capture", not(feature = "x11-capture")))]
     {
         if scap::is_supported() {
             let mut sources = Vec::new();
@@ -52,7 +83,16 @@ pub fn create_capturable(
     source_id: &str,
     config: &crate::CaptureConfig,
 ) -> anyhow::Result<Box<dyn crate::Capturable>> {
-    #[cfg(feature = "scap-capture")]
+    #[cfg(feature = "x11-capture")]
+    if is_x11_session() {
+        return x11_source::create_from_id(source_id, config);
+    }
+    #[cfg(feature = "x11-capture")]
+    if !is_x11_session() {
+        anyhow::bail!("Wayland is not supported for display capture; log into an X11 session");
+    }
+
+    #[cfg(all(feature = "scap-capture", not(feature = "x11-capture")))]
     {
         if let Ok(Some(target)) = target_from_id(source_id) {
             let (name, _) = match &target {
@@ -91,7 +131,7 @@ pub fn create_capturable(
     let _ = config;
     tracing::warn!(
         source_id,
-        "using synthetic capture; rebuild with --features scap-capture for real display frames"
+        "using synthetic capture; rebuild with --features x11-capture for real display frames"
     );
     Ok(Box::new(SyntheticCapturable::display(
         source_id,

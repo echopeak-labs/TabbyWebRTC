@@ -25,9 +25,18 @@ function jsonResponse(statusCode: number, body: object): APIGatewayProxyResult {
   };
 }
 
+async function resolveListAgentsUserId(token: string): Promise<string> {
+  try {
+    const payload = await verifyTabbyWebRTCToken(token);
+    return payload.sub!;
+  } catch {
+    const { userId } = await verifyClerkJwt(token);
+    return userId;
+  }
+}
+
 async function handleListAgents(token: string): Promise<APIGatewayProxyResult> {
-  const payload = await verifyTabbyWebRTCToken(token);
-  const userId = payload.sub!;
+  const userId = await resolveListAgentsUserId(token);
   const agents = await listAgentsByUserId(userId);
 
   return jsonResponse(200, {
