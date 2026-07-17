@@ -15,6 +15,10 @@ TabbyWebRTC pairs a lightweight **desktop agent** (Rust) with a **browser-based 
 
 The desktop agent never changes display settings on the host.
 
+## Preview
+
+![TabbyWebRTC launchpad showing display thumbnails and capturable apps](assets/launchpad.png)
+
 ## Architecture
 
 | Component | Location | Role |
