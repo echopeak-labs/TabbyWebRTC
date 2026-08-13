@@ -1,8 +1,8 @@
 # TabbyWebRTC — Agent Task Lists
 
-Each section below corresponds to a spec file in `docs/spec/`. Tasks are ordered
-for sequential execution within a spec. Check the `agents.md` dependency graph
-before starting any domain.
+Each section below corresponds to a spec file in `docs/spec/001-init/`. Tasks are
+ordered for sequential execution within a spec. Check the `agents.md` dependency
+graph before starting any domain.
 
 Use `[ ]` / `[x]` to track individual task completion.
 

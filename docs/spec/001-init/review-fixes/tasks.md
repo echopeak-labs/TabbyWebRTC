@@ -1,6 +1,6 @@
 # Review Fixes — Task List
 
-Checklist for `docs/spec/review-fixes/`. Work findings in priority order from
+Checklist for `docs/spec/001-init/review-fixes/`. Work findings in priority order from
 `00-overview.md` unless blocked. Mark `[x]` when acceptance criteria in the
 domain spec are met.
 

@@ -1,0 +1,11 @@
+---
+description: Creating a full spec from criteria.md, splitting spec domains, or implementing anything under docs/spec/
+globs: docs/spec/**
+alwaysApply: false
+---
+
+# Spec orchestration
+
+Read and follow `docs/spec/AGENTS.md` before creating a spec, splitting domains, or implementing from a spec.
+
+The chat that receives "make a full spec out of a criteria.md" is the orchestrator entry point. Split the criteria into domain specs under `docs/spec/<NNN>-<slug>/`, then farm each domain spec to a separate subagent. Do not implement product code in the orchestrator.

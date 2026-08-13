@@ -1,9 +1,14 @@
-# TabbyWebRTC — Agentic Orchestration File
+# Spec 001-init — Agentic Orchestration
 
-This file is the single source of truth for tracking the implementation status
-of every spec in `docs/spec/`. Each agent working on this project must update
-the `status` field of the spec it is implementing before starting work and again
-when complete.
+| Field  | Value    |
+| ------ | -------- |
+| ID     | `001`    |
+| Slug   | `init`   |
+| Status | `review` |
+
+This file is the lock table for domain specs in `docs/spec/001-init/`. Each agent
+working this spec must update the `status` field of the domain spec it is
+implementing before starting work and again when complete.
 
 ---
 
@@ -273,14 +278,14 @@ Copy into every agent chat:
 ```text
 You are <OWNER_AGENT_ID>.
 
-Read docs/spec/agents.md first.
-Only implement docs/spec/<SPEC_PATH>.
+Read docs/spec/001-init/agents.md first.
+Only implement docs/spec/001-init/<SPEC_PATH>.
 Do not edit files outside the allowed paths for this spec in agents.md.
 Do not work on any other spec.
 
 Before coding:
 1. Set Owner Agent to <OWNER_AGENT_ID> and Status to in-progress in agents.md.
-2. Work only tasks under ## <SPEC_PATH> in docs/spec/tasks.md.
+2. Work only tasks under ## <SPEC_PATH> in docs/spec/001-init/tasks.md.
 
 Branch: agent/<branch-name>
 
@@ -295,14 +300,14 @@ Example:
 ```text
 You are agent-backend-01.
 
-Read docs/spec/agents.md first.
-Only implement docs/spec/backend/01-architecture.md.
+Read docs/spec/001-init/agents.md first.
+Only implement docs/spec/001-init/backend/01-architecture.md.
 Do not edit frontend/, desktop-agent/, or other backend specs.
 Do not work on any other spec.
 
 Before coding:
 1. Set Owner Agent to agent-backend-01 and Status to in-progress in agents.md.
-2. Work only tasks under ## backend/01-architecture.md in docs/spec/tasks.md.
+2. Work only tasks under ## backend/01-architecture.md in docs/spec/001-init/tasks.md.
 
 Branch: agent/backend-01-architecture
 

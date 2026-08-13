@@ -3,7 +3,7 @@
 ## Scope
 
 Remediation specs for gaps, security issues, and flawed logic found when
-reviewing `docs/spec` against the implementation in `components/frontend`,
+reviewing `docs/spec/001-init` against the implementation in `components/frontend`,
 `components/infra`, and `components/desktop-agent`.
 
 Source review: 2026-07-10. Finding IDs are stable across this folder and must be
