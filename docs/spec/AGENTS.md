@@ -10,10 +10,12 @@ Per-spec lock tables and task lists live in `docs/spec/<id>-<slug>/agents.md` an
 
 ## Spec registry
 
-| ID    | Folder              | Status   | Source                                      |
-| ----- | ------------------- | -------- | ------------------------------------------- |
-| `001` | `001-init`          | `review` | Original product criteria (`product/vison`) |
-| `002` | `002-win32-support` | `ready`  | Windows 11 host criteria (`criteria.md`)    |
+| ID    | Folder                  | Status   | Source                                      |
+| ----- | ----------------------- | -------- | ------------------------------------------- |
+| `001` | `001-init`              | `review` | Original product criteria (`product/vison`) |
+| `002` | `002-win32-support`     | `ready`  | Windows 11 host criteria (`criteria.md`)    |
+| `003` | `003-frontend-extended` | `ready`  | Host/Guest first-run UI (`criteria.md`)     |
+| `004` | `004-bootstrap`         | `ready`  | Self-host TUI bootstrap (`criteria.md`)     |
 
 When a spec is created or its overall status changes, update this table in the
 same change.
